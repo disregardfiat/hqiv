@@ -20,6 +20,11 @@
   #anisotropy h3 { margin:0 0 8px 0; font-size:14px; }
   #anisotropy canvas { display:block; margin-top:8px; border:1px solid #333; }
   .aniso-stat { font-size:11px; color:#888; margin-top:4px; }
+  .aniso-stats { font-size:10px; color:#0ff; margin-top:8px; line-height:1.4; }
+  .aniso-stats span { color:#ff0; }
+  #downloadBtn { margin-top:8px; padding:4px 12px; background:#0a0; color:#000; border:none; 
+                 cursor:pointer; font-family:inherit; font-size:11px; }
+  #downloadBtn:hover { background:#0f0; }
 </style>
 </head>
 <body>
@@ -37,7 +42,8 @@
 <div id="anisotropy">
   <h3>CMB Anisotropy Map (Mollweide)</h3>
   <canvas id="anisoCanvas" width="512" height="256"></canvas>
-  <div class="aniso-stat" id="aniso-stat">Samples: 0 | l-range: 0-0</div>
+  <div class="aniso-stats" id="aniso-stats"></div>
+  <button id="downloadBtn" onclick="downloadAnisotropyData()">Download FITS-like Data</button>
 </div>
 <div id="controls">Drag: rotate • Scroll: zoom • Space: pause/resume • R: reset • A: anisotropy</div>
 <div id="error">WebGL not available. Save as .html and open in Chrome/Firefox.</div>
@@ -69,6 +75,7 @@ let recombinationSnapshot = null;
 let scene, camera, renderer, points, horizonSphere;
 let maxStructureSize = 0;
 let cameraDir = new THREE.Vector3(0, 0, -1);
+let anisotropyData = null; // Store for download
 
 function initArrays() {
   const n = gridSize * gridSize * gridSize;
@@ -244,12 +251,18 @@ function updateCA() {
   
   energy = newEnergy;
   
+  // Recombination trigger: time-based at ~380 Kyr (midpoint of 300-600 Kyr range)
+  // This corresponds to z~1100 when the universe became transparent
+  // Only trigger if we have meaningful structure formation (allowedModes > 0)
   let bulkFraction = bulkCells > 0 ? bulkLowEnergy / bulkCells : 0;
-  if (!recombinationReached && bulkFraction > 0.5) {
+  let recombinationTime = simTime >= 380;
+  let hasStructure = allowedModes > 1000;
+  
+  if (!recombinationReached && recombinationTime && hasStructure) {
     recombinationReached = true;
     paused = true; // Auto-pause at recombination!
     document.getElementById('stat-recomb').style.display = 'block';
-    console.log('★ RECOMBINATION at ' + simTime.toFixed(1) + ' Kyr (bulk: ' + (bulkFraction*100).toFixed(1) + '%) ★');
+    console.log('★ RECOMBINATION at ' + simTime.toFixed(1) + ' Kyr (bulk: ' + (bulkFraction*100).toFixed(1) + '%, modes: ' + allowedModes + ') ★');
     recombinationSnapshot = {
       energy: new Float32Array(energy),
       time: simTime,
@@ -330,6 +343,21 @@ function updateVisualization() {
   
   camera.getWorldDirection(cameraDir);
   
+  // Calculate mean energy for distance-to-mean coloring
+  const n = gridSize * gridSize * gridSize;
+  let meanEnergy = 0;
+  let stdDev = 0;
+  
+  for(let i=0; i<n; i++) {
+    meanEnergy += energy[i];
+  }
+  meanEnergy /= n;
+  
+  for(let i=0; i<n; i++) {
+    stdDev += Math.pow(energy[i] - meanEnergy, 2);
+  }
+  stdDev = Math.sqrt(stdDev / n) + 0.001; // Avoid division by zero
+  
   for(let i=0; i<gridSize*gridSize*gridSize; i++) {
     let c = getCellCoord(i);
     
@@ -346,9 +374,11 @@ function updateVisualization() {
     let vDir = new THREE.Vector3(vx, vy, vz).normalize();
     let dot = vDir.dot(cameraDir);
     
-    // Brighter for higher energy
-    let brightness = Math.pow(e * 2.0, 1.8);
-    brightness = Math.min(1.0, brightness);
+    // Distance-to-mean based brightness (scale-corrected)
+    // Values above mean are bright, below mean are dim
+    let deviation = (e - meanEnergy) / stdDev;
+    let brightness = 0.5 + deviation * 0.3; // Center at 0.5, scale by std devs
+    brightness = Math.max(0.1, Math.min(1.0, brightness));
     
     let r, g, b;
     if (dot > 0) {
@@ -372,25 +402,30 @@ function updateVisualization() {
 
 // Mollweide projection for CMB anisotropy
 function mollweide(lon, lat, width, height) {
-  const phi = lat;
-  const theta = lon;
-  const R = Math.min(width, height) * 0.45;
+  // Standard Mollweide projection
+  const lambda = lon;  // longitude in radians
+  const phi = lat;     // latitude in radians
   
   if (Math.abs(phi) > Math.PI / 2) return null;
   
-  const sinPhi = Math.sin(phi);
-  const cosPhi = Math.cos(phi);
-  const sinTheta = Math.sin(theta);
-  const cosTheta = Math.cos(theta);
+  // Solve for theta iteratively: 2*theta + sin(2*theta) = PI * sin(phi)
+  let theta = phi; // Initial guess
+  for (let i = 0; i < 10; i++) {
+    let delta = (2 * theta + Math.sin(2 * theta) - Math.PI * Math.sin(phi)) / 
+                (2 + 2 * Math.cos(2 * theta));
+    theta -= delta;
+    if (Math.abs(delta) < 1e-6) break;
+  }
   
-  const cotPhi = cosPhi / (sinPhi + 0.001);
+  const R = Math.min(width, height) * 0.45;
   
-  const x = R * 2 * sinTheta * cosPhi / (Math.PI * Math.sqrt(1 + cosPhi * cosPhi));
-  const y = R * sinPhi / (Math.PI / 2);
+  // Standard Mollweide formulas
+  const x = R * 2 * Math.SQRT2 / Math.PI * lambda * Math.cos(theta);
+  const y = R * Math.SQRT2 * Math.sin(theta);
   
   return {
-    x: width / 2 + x * R,
-    y: height / 2 - y * R
+    x: width / 2 + x,
+    y: height / 2 - y
   };
 }
 
@@ -440,65 +475,250 @@ function generateAnisotropyMap() {
     ctx.stroke();
   }
   
-  const centerX = 0;
-  const centerY = 0;
-  const centerZ = 0;
-  const radius = gridSize * 0.38;
+  // Create a grid of angular directions for the CMB map
+  // Each direction accumulates energy along the line of sight (like real CMB observation)
+  const nTheta = 180; // longitude resolution
+  const nPhi = 90;    // latitude resolution
   
+  // Accumulate energy for each angular direction
+  let energyMap = new Float32Array(nTheta * nPhi);
+  let countMap = new Uint32Array(nTheta * nPhi);
+  
+  // Project ALL cells onto the sphere by their angular direction
+  for (let i = 0; i < gridSize*gridSize*gridSize; i++) {
+    let c = getCellCoord(i);
+    let dx = c.x;
+    let dy = c.y;
+    let dz = c.z;
+    let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+    
+    // Only consider cells inside the bulk region
+    if (dist > 0 && dist < gridSize * 0.4) {
+      // Calculate angular position
+      let theta = Math.atan2(dy, dx); // -PI to PI
+      let phi = Math.acos(dz / dist); // 0 to PI
+      
+      // Convert to grid indices
+      let thetaIdx = Math.floor(((theta + Math.PI) / (2 * Math.PI)) * nTheta);
+      let phiIdx = Math.floor((phi / Math.PI) * nPhi);
+      
+      thetaIdx = Math.max(0, Math.min(nTheta - 1, thetaIdx));
+      phiIdx = Math.max(0, Math.min(nPhi - 1, phiIdx));
+      
+      let idx = phiIdx * nTheta + thetaIdx;
+      energyMap[idx] += recombinationSnapshot.energy[i];
+      countMap[idx]++;
+    }
+  }
+  
+  // Convert to samples array for processing
   const samples = [];
   let minE = Infinity, maxE = -Infinity;
   
-  // Collect samples from sphere surface
-  for (let i = 0; i < gridSize*gridSize*gridSize; i++) {
-    let c = getCellCoord(i);
-    let dx = c.x - centerX;
-    let dy = c.y - centerY;
-    let dz = c.z - centerZ;
-    let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
-    
-    if (Math.abs(dist - radius) < 1.5) {
-      let theta = Math.atan2(dy, dx);
-      let phi = Math.acos(dz / (dist + 0.001));
-      
-      let e = recombinationSnapshot.energy[i];
-      samples.push({theta, phi, energy: e});
-      minE = Math.min(minE, e);
-      maxE = Math.max(maxE, e);
+  for (let phiIdx = 0; phiIdx < nPhi; phiIdx++) {
+    for (let thetaIdx = 0; thetaIdx < nTheta; thetaIdx++) {
+      let idx = phiIdx * nTheta + thetaIdx;
+      if (countMap[idx] > 0) {
+        let avgEnergy = energyMap[idx] / countMap[idx];
+        let theta = (thetaIdx / nTheta) * 2 * Math.PI - Math.PI;
+        let phi = (phiIdx / nPhi) * Math.PI;
+        
+        samples.push({theta, phi, energy: avgEnergy});
+        minE = Math.min(minE, avgEnergy);
+        maxE = Math.max(maxE, avgEnergy);
+      }
     }
   }
   
-  // Draw samples
-  let eRange = maxE - minE || 1;
+  // Calculate mean and standard deviation from the SAMPLES themselves
+  let meanE = 0;
+  for (let s of samples) {
+    meanE += s.energy;
+  }
+  meanE /= samples.length;
   
+  let stdDev = 0;
+  for (let s of samples) {
+    stdDev += Math.pow(s.energy - meanE, 2);
+  }
+  stdDev = Math.sqrt(stdDev / samples.length);
+  
+  // Use min-max range if stdDev is too small
+  let range = maxE - minE;
+  let useMinMax = stdDev < 0.0001 || range < 0.0001;
+  
+  console.log('Anisotropy stats: mean=' + meanE.toFixed(6) + ', std=' + stdDev.toFixed(6) + 
+              ', min=' + minE.toFixed(6) + ', max=' + maxE.toFixed(6) + 
+              ', range=' + range.toFixed(6) + ', samples=' + samples.length);
+  
+  // Draw samples with proper color mapping - use larger pixels for visibility
   for (let s of samples) {
     let pt = mollweide(s.theta, s.phi - Math.PI/2, width, height);
     if (pt && pt.x > 0 && pt.x < width && pt.y > 0 && pt.y < height) {
-      let norm = (s.energy - minE) / eRange;
-      let brightness = Math.floor(norm * 255);
-      
-      // CMB-style colormap: blue -> white -> red
-      let r, g, b;
-      if (norm < 0.5) {
-        r = brightness * 0.4;
-        g = brightness * 0.7;
-        b = brightness;
+      let norm;
+      if (range > 0) {
+        // Use min-max normalization scaled to -1 to +1
+        norm = (s.energy - minE) / range - 0.5;
+        norm *= 2;
       } else {
-        r = brightness;
-        g = brightness * (1 - (norm - 0.5) * 0.6);
-        b = brightness * (1 - (norm - 0.5) * 1.2);
+        norm = 0;
+      }
+      norm = Math.max(-1, Math.min(1, norm));
+      
+      // Enhanced CMB-style colormap with better contrast
+      let r, g, b;
+      if (norm < 0) {
+        // Cold: deep blue to light blue
+        let t = -norm;
+        r = Math.floor(30 + 70 * (1 - t));
+        g = Math.floor(30 + 140 * (1 - t));
+        b = Math.floor(80 + 175 * t);
+      } else {
+        // Hot: yellow to deep red  
+        let t = norm;
+        r = Math.floor(80 + 175 * t);
+        g = Math.floor(80 + 100 * (1 - t));
+        b = Math.floor(30 + 50 * (1 - t));
       }
       
       ctx.fillStyle = `rgb(${r},${g},${b})`;
-      ctx.fillRect(pt.x - 1, pt.y - 1, 2, 2);
+      // Draw larger pixels for better visibility
+      ctx.fillRect(pt.x - 3, pt.y - 3, 6, 6);
     }
   }
   
-  // Estimate l range from samples
-  let lMax = Math.floor(samples.length / 3);
-  document.getElementById('aniso-stat').textContent = 
-    `Samples: ${samples.length.toLocaleString()} | l-range: ~0-${lMax}`;
+  // Store data for download
+  anisotropyData = {
+    energyMap: energyMap,
+    countMap: countMap,
+    nTheta: nTheta,
+    nPhi: nPhi,
+    samples: samples,
+    stats: {
+      mean: meanE,
+      stdDev: stdDev,
+      min: minE,
+      max: maxE,
+      range: range,
+      nSamples: samples.length
+    },
+    metadata: {
+      time: recombinationSnapshot.time,
+      generation: recombinationSnapshot.generation,
+      gridSize: gridSize
+    }
+  };
   
-  console.log('Anisotropy: ' + samples.length + ' samples, l~0-' + lMax);
+  // Display WMAP-style statistics
+  // Convert energy to "temperature" in μK (microkelvin) scale
+  // Real CMB: T_mean ≈ 2.725K, ΔT ≈ ±100μK
+  // We scale our energy to similar proportions
+  const T_mean = 2725000; // 2.725K in μK
+  const T_scale = 100 / stdDev; // Scale so 1σ ≈ 100μK
+  
+  const deltaT_min = (minE - meanE) * T_scale;
+  const deltaT_max = (maxE - meanE) * T_scale;
+  const deltaT_rms = stdDev * T_scale;
+  
+  // Calculate higher-order statistics
+  let skewness = 0, kurtosis = 0;
+  for (let s of samples) {
+    let z = (s.energy - meanE) / stdDev;
+    skewness += z * z * z;
+    kurtosis += z * z * z * z;
+  }
+  skewness /= samples.length;
+  kurtosis = kurtosis / samples.length - 3; // Excess kurtosis
+  
+  // Estimate l_max from angular resolution
+  const l_max = Math.min(nTheta, nPhi) * 2;
+  
+  // Display stats
+  const statsDiv = document.getElementById('aniso-stats');
+  statsDiv.innerHTML = `
+    <b>=== CMB Anisotropy Statistics ===</b><br>
+    Mean Temperature: <span>${T_mean.toFixed(0)} μK</span> (2.725 K)<br>
+    ΔT Range: <span>${deltaT_min.toFixed(1)}</span> to <span>+${deltaT_max.toFixed(1)} μK</span><br>
+    RMS Fluctuation: <span>±${deltaT_rms.toFixed(1)} μK</span><br>
+    Skewness: <span>${skewness.toFixed(4)}</span><br>
+    Kurtosis (excess): <span>${kurtosis.toFixed(4)}</span><br>
+    <br>
+    <b>=== Map Properties ===</b><br>
+    Resolution: <span>${nTheta}×${nPhi}</span> pixels<br>
+    l_max: <span>~${l_max}</span><br>
+    Total Samples: <span>${samples.length.toLocaleString()}</span><br>
+    <br>
+    <b>=== Simulation Info ===</b><br>
+    Time: <span>${recombinationSnapshot.time.toFixed(1)} Kyr</span><br>
+    Generation: <span>${recombinationSnapshot.generation}</span><br>
+    Grid: <span>${gridSize}³</span>
+  `;
+  
+  console.log('Anisotropy: ' + samples.length + ' samples, l~0-' + l_max);
+  console.log('ΔT RMS:', deltaT_rms.toFixed(2), 'μK');
+}
+
+function downloadAnisotropyData() {
+  if (!anisotropyData) {
+    alert('No anisotropy data available. Run simulation to recombination first.');
+    return;
+  }
+  
+  // Create FITS-like header
+  let header = `SIMPLE  =                    T / file conforms to FITS standard
+BITPIX  =                  -32 / array data type
+NAXIS   =                    2 / number of array dimensions
+NAXIS1  =                  ${anisotropyData.nTheta} / longitude dimension
+NAXIS2  =                  ${anisotropyData.nPhi} / latitude dimension
+CTYPE1  = 'RA---MOL'           / Mollweide projection in RA
+CTYPE2  = 'DEC--MOL'           / Mollweide projection in Dec
+CRVAL1  =                  0.0 / RA at reference point
+CRVAL2  =                  0.0 / Dec at reference point
+CRPIX1  =              ${anisotropyData.nTheta/2}.0 / reference pixel X
+CRPIX2  =              ${anisotropyData.nPhi/2}.0 / reference pixel Y
+CDELT1  =    ${360/anisotropyData.nTheta} / pixel scale in degrees
+CDELT2  =    ${180/anisotropyData.nPhi} / pixel scale in degrees
+BUNIT   = 'Energy   '           / arbitrary units
+DATAMIN =    ${anisotropyData.stats.min.toExponential(10)} / minimum data value
+DATAMAX =    ${anisotropyData.stats.max.toExponential(10)} / maximum data value
+DATAMEAN=    ${anisotropyData.stats.mean.toExponential(10)} / mean data value
+DATASIG =    ${anisotropyData.stats.stdDev.toExponential(10)} / standard deviation
+SIMTIME =    ${anisotropyData.metadata.time} / simulation time in Kyr
+SIMGEN  =                  ${anisotropyData.metadata.generation} / simulation generation
+GRIDSIZE=                  ${anisotropyData.metadata.gridSize} / CA grid size
+END
+`;
+  
+  // Pad header to 2880 bytes (FITS requirement)
+  while (header.length % 80 !== 0) header += ' ';
+  while (header.length % 2880 !== 0) header += ' ';
+  
+  // Create binary data (float32 array)
+  const data = anisotropyData.energyMap;
+  const buffer = new ArrayBuffer(header.length + data.length * 4);
+  const view = new Uint8Array(buffer);
+  
+  // Write header
+  for (let i = 0; i < header.length; i++) {
+    view[i] = header.charCodeAt(i);
+  }
+  
+  // Write data (big-endian float32)
+  const dataView = new DataView(buffer, header.length);
+  for (let i = 0; i < data.length; i++) {
+    dataView.setFloat32(i * 4, data[i], false); // false = big-endian
+  }
+  
+  // Download
+  const blob = new Blob([buffer], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `hqiv_cmb_anisotropy_gen${anisotropyData.metadata.generation}.fits`;
+  a.click();
+  URL.revokeObjectURL(url);
+  
+  console.log('Downloaded FITS file with', anisotropyData.stats.nSamples, 'pixels');
 }
 
 function showAnisotropy() {
