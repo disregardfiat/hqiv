@@ -1,0 +1,22 @@
+# LaTeX
+paper/*.aux paper/*.bbl paper/*.blg paper/*.log paper/*.out paper/*.synctex.gz paper/*.fls paper/*.fdb_latexmk
+
+# Python
+sandbox/.venv/
+class_integration/.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# CLASS / HiCLASS
+class_integration/hqiv_Ha.txt
+*.so
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+*~

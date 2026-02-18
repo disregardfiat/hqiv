@@ -1,0 +1,12 @@
+--- a/fortran/camb.f90
++++ b/fortran/camb.f90
+@@ -308,6 +308,11 @@
+  P%h0 = Ini%Read_Double('hubble')
+ 
++ ! HQIV covariant extension — Steven Ettinger + Mr 4.20
++ P%HQIV_covariant = Ini%Read_Logical('HQIV_covariant', .false.)
++ if (P%HQIV_covariant .and. .not. P%HQIV) P%HQIV = .true.
++
+  if (Ini%Read_Logical('use_physical', .true.)) then
+  P%ombh2 = Ini%Read_Double('ombh2')
+  P%omch2 = Ini%Read_Double('omch2')

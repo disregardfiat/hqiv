@@ -1,0 +1,103 @@
+# Full covariant HQIV — compile and run
+
+## CRITICAL: Dynamic horizon term only
+
+- **A_eff = A_std + beta × H(t)²** (not H₀²); **beta = 1.02** (fixed from QI axiom).
+- Background table `hqiv_Ha.txt` must be generated with this dynamic term (target age ~17–20 Gyr).
+
+---
+
+## 1. Generate background table
+
+From repo root:
+
+```bash
+cd sandbox
+.venv/bin/python generate_hqiv_background.py
+```
+
+This writes `hqiv_Ha.txt` with columns `a`, `H_over_H0`, H(a=1)=H₀ enforced. Copy to CAMB run directory:
+
+```bash
+cp sandbox/hqiv_Ha.txt CAMB/fortran/
+cp sandbox/hqiv_Ha.txt camb_hqiv/inifiles/
+```
+
+---
+
+## 2. Build CAMB (Fortran)
+
+```bash
+cd CAMB/fortran
+make clean
+make
+```
+
+Requires: `gfortran`, OpenMP, and the `forutils` submodule (`CAMB/forutils`) initialised.
+
+---
+
+## 3. Run from Fortran
+
+Quick test (l_max=500, &lt;10 min):
+
+```bash
+cd CAMB/fortran
+./camb params_hqiv.ini
+```
+
+With full covariant (horizon cutoff, beta=1.02):
+
+```bash
+./camb params_hqiv_covariant.ini
+```
+
+Create `params_hqiv_covariant.ini` from `params_hqiv.ini` with:
+
+- `HQIV_covariant = T`
+- `hqiv_beta = 1.02`
+
+---
+
+## 4. Run from Python
+
+Install CAMB in development mode:
+
+```bash
+pip install -e /path/to/HQIV/CAMB
+```
+
+Then:
+
+```bash
+cd camb_hqiv
+python run_hqiv_covariant_test.py
+```
+
+Ensure `hqiv_Ha.txt` is in the same directory as the .ini or set `hqiv_Ha_file` to its path.
+
+---
+
+## 5. Outputs to report
+
+After a successful run:
+
+- **Universe age today** (Gyr) — target ~17–20 Gyr with dynamic-term table
+- **First acoustic peak** ℓ
+- **Low-ℓ suppression** (ℓ=2–30) %
+- **σ₈**
+- **D(z=14) / D_ΛCDM**
+
+---
+
+## 6. Files modified (summary)
+
+| File | Change |
+|------|--------|
+| `sandbox/generate_hqiv_background.py` | A_eff = A_std + beta*H(t)², beta=1.02 |
+| `fortran/model.f90` | hqiv_beta default 1.02 |
+| `fortran/camb.f90` | hqiv_beta default 1.02 in read |
+| `fortran/results.f90` | GetTheta(a), GetInertiaFactor(a, a_local_ratio) |
+| `fortran/cmbmain.f90` | Horizon cutoff exp(-(k/k_cut)^1.8) in CalcScalCls |
+
+Further covariant terms (modified Poisson with G(a), inertia in Euler/continuity, c_s,eff) are documented in `patches_covariant/equations_covariant_snippet.f90` for future implementation.

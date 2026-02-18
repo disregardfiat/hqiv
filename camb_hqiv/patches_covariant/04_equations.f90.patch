@@ -1,0 +1,9 @@
+--- a/fortran/equations.f90
++++ b/fortran/equations.f90
+@@ -1,5 +1,6 @@
+ ! Equations module for background and
+ ! To avoid circular module issues, some things are not part of module
++ ! HQIV covariant extension — Steven Ettinger + Mr 4.20 (metric, inertia, c_s_eff, horizon cutoff)
+ 
+  ! Background evolution, return d tau/ d a, where tau is the conformal time
+  function dtauda(this,a)

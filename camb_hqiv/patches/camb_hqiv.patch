@@ -1,0 +1,35 @@
+--- a/fortran/model.f90
++++ b/fortran/model.f90
+@@ -16,7 +16,7 @@
+  use Precision
+  use classes
+  use SourceWindows
+- use constants, only : COBE_CMBTemp, default_nnu
++ use constants, only : COBE_CMBTemp, default_nnu, Ini_max_string_len
+  use DarkEnergyInterface
+  use MassiveNu
+  use config
+@@ -161,6 +161,13 @@
+  real(dl) :: Alens = 1._dl !Unphysical rescaling parameter of the CMB lensing power
+ 
++ ! HQIV (Horizon-Quantized Informational Vacuum) cosmology
++ logical :: HQIV = .false.
++ character(LEN=Ini_max_string_len) :: hqiv_Ha_file = 'hqiv_Ha.txt'
++ real(dl) :: hqiv_cs2_fac = 1._dl
++ real(dl) :: hqiv_l_cut = 38._dl
++ real(dl) :: hqiv_beta = 0.78_dl
++
+  integer :: MassiveNuMethod = Nu_best
+--- a/fortran/results.f90
++++ b/fortran/results.f90
+@@ -160,6 +160,14 @@ type, extends(TCAMBdata) :: CAMBdata
+  type(CAMBparams) :: CP
+ 
+  real(dl) ThermoDerivedParams(nthermo_derived)
++
++ ! HQIV: tabulated H(a)/H0
++ logical :: HQIV_mode = .false.
++ integer :: hqiv_na = 0
++ real(dl), allocatable :: hqiv_a(:), hqiv_H_over_H0(:)
+ 
+  logical flat,closed
