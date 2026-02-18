@@ -35,9 +35,7 @@
   <div class="stat" id="stat-coherence">Angular Coherence: 0.000</div>
   <div class="stat" id="stat-time">Time: 0.00 Kyr</div>
   <div class="stat" id="stat-horizon">Horizon Θ: 0.0 Mpc</div>
-  <div class="stat" id="stat-redshift">Redshift z: 0.0</div>
   <div class="stat" id="stat-structure">Max Structure: 0.0 Mpc</div>
-  <div class="stat" id="stat-H">H(t): 0.0 H₀</div>
   <div class="stat" id="stat-bulk">Bulk Energy: 0.0%</div>
   <div class="stat checkpoint" id="stat-recomb" style="display:none;">★ RECOMBINATION - PAUSED ★</div>
 </div>
@@ -60,8 +58,8 @@
 // Increased resolution: 80^3 = 512,000 cells for l~1200 anisotropy
 const GRID_SIZE = 80;
 const CELL_SIZE = 1.0;
-const Mpc_to_grid = 0.15;
-const RECOMB_TAU_kyr = 510; // Fixed recombination time from paper: 510 Kyr
+const MPc_to_grid = 0.15;
+const RECOMB_TAU = 0.51;
 const DAMPING_OUTSIDE = 0.85;
 const ENERGY_THRESHOLD = 0.05;
 const PRINT_EVERY = 3;
@@ -116,18 +114,14 @@ function initArrays() {
 }
 
 function getHorizonRadius(timeKyr) {
-  let t_norm = Math.max(timeKyr, 1) / RECOMB_TAU_kyr;
+  let t_norm = Math.max(timeKyr, 1) / RECOMB_TAU;
   let baseHorizon = 164;
   return baseHorizon * Math.pow(t_norm, 0.67);
 }
 
-// HQIV scale factor a(t) - calibrated to give a_rec = 1/1067.73 at t=510 Kyr
-// From t=t_rec to today: a ∝ t^(2/3), so t0 = t_rec / a_rec^(3/2)
-const T0_kyr = 16891253.72; // Age of universe in Kyr (derived from recombination)
 function getScaleFactor(timeKyr) {
-  // Proper scale factor: a = (t/t0)^(2/3) for matter-dominated
-  // Use t^(0.67) ≈ t^(2/3)
-  return Math.pow(timeKyr / T0_kyr, 0.67);
+  let t_norm = Math.max(timeKyr, 1) / RECOMB_TAU;
+  return Math.pow(t_norm, 0.67);
 }
 
 function getNeighbors(i) {
@@ -160,31 +154,15 @@ function isInBulk(i) {
   return dist < gridSize * 0.35;
 }
 
-// Round to 3 significant figures for mode thresholds
-function round3sig(n) {
-  if (n <= 0) return 0;
-  let digits = Math.floor(Math.log10(n));
-  let factor = Math.pow(10, digits - 2);
-  return Math.round(n / factor) * factor;
-}
-
-let lastModeCount = 0;
-
 function updateCA() {
   if (paused) return;
   
   generation++;
-  // Dynamic timestep based on allowed modes
-  let targetModes = round3sig(Math.max(1, lastModeCount));
-  let dt = 0.5 + 1.0 / (1 + targetModes / 100);
-  simTime += dt;
-
+  simTime += 1.5; // Slower for better resolution
   
   let horizonRadius = getHorizonRadius(simTime);
-  let horizonGrid = horizonRadius * Mpc_to_grid;
+  let horizonGrid = horizonRadius * MPc_to_grid;
   let scaleFactor = getScaleFactor(simTime);
-  // Energy cooling due to cosmic expansion
-  let expansionFactor = scaleFactor;
   
   const n = gridSize * gridSize * gridSize;
   let newEnergy = new Float32Array(n);
@@ -248,8 +226,6 @@ function updateCA() {
       vz *= DAMPING_OUTSIDE;
     }
     
-    // Apply cosmological cooling from expansion
-    newE = newE * (expansionFactor || 1);
     newE = Math.max(0.01, newE);
     newE = Math.min(2.0, newE);
     
@@ -274,21 +250,19 @@ function updateCA() {
   }
   
   energy = newEnergy;
-  // Store mode count for dynamic timestep
-  lastModeCount = allowedModes;
   
-  // Recombination: triggered by time AND sufficient mode development
-  // Per paper: fixed at t=510 Kyr, z≈1067.73
+  // Recombination trigger: time-based at ~380 Kyr (midpoint of 300-600 Kyr range)
+  // This corresponds to z~1100 when the universe became transparent
+  // Only trigger if we have meaningful structure formation (allowedModes > 0)
   let bulkFraction = bulkCells > 0 ? bulkLowEnergy / bulkCells : 0;
-  let recombinationTime = simTime >= RECOMB_TAU_kyr;
-  // Need at least 100 modes for meaningful anisotropy
-  let hasStructure = allowedModes > 100;
+  let recombinationTime = simTime >= 380;
+  let hasStructure = allowedModes > 1000;
   
   if (!recombinationReached && recombinationTime && hasStructure) {
     recombinationReached = true;
     paused = true; // Auto-pause at recombination!
     document.getElementById('stat-recomb').style.display = 'block';
-    console.log('★ RECOMBINATION at ' + simTime.toFixed(1) + ' Kyr (fixed at ' + RECOMB_TAU_kyr + ' Kyr from paper) (bulk: ' + (bulkFraction*100).toFixed(1) + '%, modes: ' + allowedModes + ') ★');
+    console.log('★ RECOMBINATION at ' + simTime.toFixed(1) + ' Kyr (bulk: ' + (bulkFraction*100).toFixed(1) + '%, modes: ' + allowedModes + ') ★');
     recombinationSnapshot = {
       energy: new Float32Array(energy),
       time: simTime,
@@ -306,7 +280,7 @@ function updateCA() {
     coherence = Math.abs(avgVz) / mag;
   }
   
-  maxStructureSize = calculateMaxStructure() * (CELL_SIZE / Mpc_to_grid) * 0.7;
+  maxStructureSize = calculateMaxStructure() * (CELL_SIZE / MPc_to_grid) * 0.7;
   horizonSphere.scale.setScalar(horizonGrid * CELL_SIZE * 0.6);
   
   if (generation % PRINT_EVERY === 0) {
