@@ -738,9 +738,12 @@
         return
     end if
 
+    if (P%HQIV) write(*,*) 'HQIV: Parameters validated. Calling CAMB_GetResults...'
     if (global_error_flag==0) call CAMB_GetResults(State,P)
+    if (P%HQIV) write(*,*) 'HQIV: CAMB_GetResults returned. error_flag=', global_error_flag
     if (global_error_flag/=0) then
         ErrMsg =  trim(global_error_message)
+        if (P%HQIV) write(*,*) 'HQIV: Error: ', trim(ErrMsg)
         return
     endif
 
@@ -766,56 +769,8 @@
 #endif
     end if
 
-    ! HQIV final report - Steven Ettinger + Mr 4.20
-    if (P%HQIV_covariant) then
-        block
-            integer il, il_peak, ilow, iref
-            real(dl) age_gyr, l_peak, low_l_supp, sigma8, growth_z14
-            real(dl) cl_low_sum, cl_ref_sum, ref_mean
-            integer nlow, nref
-            age_gyr = State%tau0 * Mpc / c / Gyr
-            l_peak = 0._dl
-            low_l_supp = 0._dl
-            sigma8 = 0._dl
-            growth_z14 = 0._dl
-            if (P%WantCls .and. allocated(State%CLdata%Cl_scalar)) then
-                il_peak = max(2, State%CP%Min_l)
-                do il = max(180, State%CP%Min_l), min(280, State%CP%Max_l)
-                    if (State%CLdata%Cl_scalar(il, 1) > State%CLdata%Cl_scalar(il_peak, 1)) il_peak = il
-                end do
-                l_peak = real(il_peak, dl)
-                nlow = 0
-                cl_low_sum = 0._dl
-                do il = max(2, State%CP%Min_l), min(30, State%CP%Max_l)
-                    nlow = nlow + 1
-                    cl_low_sum = cl_low_sum + State%CLdata%Cl_scalar(il, 1)
-                end do
-                nref = 0
-                cl_ref_sum = 0._dl
-                do il = max(50, State%CP%Min_l), min(200, State%CP%Max_l)
-                    nref = nref + 1
-                    cl_ref_sum = cl_ref_sum + State%CLdata%Cl_scalar(il, 1)
-                end do
-                if (nref > 0 .and. nlow > 0) then
-                    ref_mean = cl_ref_sum / nref
-                    if (ref_mean > 0._dl) &
-                        low_l_supp = 100._dl * (1._dl - (cl_low_sum/nlow) / ref_mean)
-                end if
-            end if
-            if (PK_WantTransfer .and. allocated(State%MT%sigma_8)) then
-                if (State%CP%Transfer%PK_num_redshifts >= 1) sigma8 = State%MT%sigma_8(1)
-            end if
-            write(*,*) '=== HQIV COVARIANT RESULTS ==='
-            write(*,*) 'Universe age today (Gyr): ', age_gyr
-            write(*,*) 'First acoustic peak approx at l = ', nint(l_peak)
-            write(*,*) 'Low-l suppression (2-30) %: ', low_l_supp
-            write(*,*) 'sigma8 today: ', sigma8
-            write(*,*) 'D(z=14)/D_LambdaCDM: ', growth_z14
-            write(*,*) '=============================='
-            flush(6)
-        end block
-    end if
-
+    if (P%HQIV) write(*,*) 'HQIV: Output files written successfully.'
+    if (P%HQIV) write(*,*) 'HQIV: Done.'
     CAMB_RunFromIni = .true.
 
     end function CAMB_RunFromIni

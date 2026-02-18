@@ -130,6 +130,8 @@
 
     WantLateTime =  CP%DoLensing .or. State%num_redshiftwindows > 0 .or. CP%CustomSources%num_custom_sources>0
 
+    if (CP%HQIV) write(*,*) 'HQIV: Entered cmbmain subroutine'
+
     if (CP%WantCls) then
         if (CP%WantTensors .and. CP%WantScalars) call MpiStop('CMBMAIN cannot generate tensors and scalars')
         !Use CAMB_GetResults instead
@@ -146,7 +148,11 @@
     if (DebugMsgs .and. Feedbacklevel > 0) call Timer%Start(starttime)
 
     call InitVars(State) !Most of single thread time spent here (in InitRECFAST)
-    if (global_error_flag/=0) return
+    if (global_error_flag/=0) then
+        if (CP%HQIV) write(*,*) 'HQIV: InitVars failed, error_flag=', global_error_flag
+        return
+    end if
+    if (CP%HQIV) write(*,*) 'HQIV: InitVars complete. tau0=', State%tau0
 
     if (DebugMsgs .and. Feedbacklevel > 0) then
         call Timer%WriteTime('Timing for InitVars')
@@ -213,8 +219,7 @@
     if (CP%WantTransfer .and. .not. State%OnlyTransfer .and. global_error_flag==0) &
         call Transfer_Get_sigmas(State, State%MT)
 
-    !     if CMB calculations are requested, calculate the Cl by
-    !     integrating the sources over time and over k.
+    if (CP%HQIV) write(*,*) 'HQIV: Source integration done. Computing Cls...'
 
     if (CP%WantCls .and. (.not. CP%WantScalars .or. .not. State%HasScalarTimeSources)) then
         call TimeSourcesToCl(ThisCT)
@@ -2236,6 +2241,7 @@
     ! HQIV covariant: super-horizon cutoff exp(-(k/k_cut)^1.8) for k < 2*pi/Theta0
     real(dl) :: k_cut_hqiv = 0._dl, hqiv_cutoff
 
+    write(*,*) 'HQIV: Entering CalcScalCls - HQIV_covariant = ', CP%HQIV_covariant
     allocate(ks(CTrans%q%npoints),dlnks(CTrans%q%npoints), pows(CTrans%q%npoints))
     if (CP%HQIV_covariant .and. State%HQIV_mode) then
         if (GetTheta(State, 1._dl) > 0._dl) k_cut_hqiv = const_twopi / GetTheta(State, 1._dl)
@@ -2394,6 +2400,100 @@
 #ifndef __INTEL_COMPILER
     !$OMP END PARALLEL DO
 #endif
+
+    ! === HQIV RESULTS SUMMARY ===
+    if (CP%HQIV_covariant) then
+       block
+       real(dl) :: hqiv_age, hqiv_zstar, hqiv_rstar, hqiv_thetastar
+       real(dl) :: hqiv_peak_ell, hqiv_peak_val, hqiv_Dl_val, hqiv_ell_j
+       real(dl) :: hqiv_low_l_avg, hqiv_high_l_avg, hqiv_suppression
+       real(dl) :: hqiv_t_recomb_myr, hqiv_z_recomb
+       real(dl) :: hqiv_DA_z2, hqiv_theta_z2, hqiv_struct_Mpc
+       integer :: jj, l_j, n_low, n_high
+
+       write(*,*) ''
+       write(*,*) '========================================'
+       write(*,*) '  HQIV COVARIANT RESULTS SUMMARY'
+       write(*,*) '========================================'
+
+       hqiv_age = State%ThermoDerivedParams(derived_age)
+       hqiv_zstar = State%ThermoDerivedParams(derived_zstar)
+       hqiv_rstar = State%ThermoDerivedParams(derived_rstar)
+       hqiv_thetastar = State%ThermoDerivedParams(derived_thetastar)
+
+       write(*,'(A,F8.2,A)') '  Universe age today       = ', hqiv_age, ' Gyr'
+       write(*,'(A,ES12.5,A)') '  tau0 (conformal time)    = ', State%tau0, ' Mpc'
+       write(*,'(A,F8.4)')   '  HQIV_beta                = ', CP%hqiv_beta
+
+       ! First acoustic peak from iCl_scalar
+       hqiv_peak_ell = 0._dl
+       hqiv_peak_val = 0._dl
+       do jj = 1, CTrans%ls%nl
+           l_j = CTrans%ls%l(jj)
+           if (l_j >= 100 .and. l_j <= 400) then
+               hqiv_Dl_val = iCl_scalar(jj, C_Temp)
+               if (hqiv_Dl_val > hqiv_peak_val) then
+                   hqiv_peak_val = hqiv_Dl_val
+                   hqiv_peak_ell = real(l_j, dl)
+               end if
+           end if
+       end do
+       write(*,'(A,F6.0)')   '  First acoustic peak ell  = ', hqiv_peak_ell
+
+       ! Low-ell suppression: average D_l(2-30) vs D_l(100-200)
+       hqiv_low_l_avg = 0._dl
+       hqiv_high_l_avg = 0._dl
+       n_low = 0
+       n_high = 0
+       do jj = 1, CTrans%ls%nl
+           l_j = CTrans%ls%l(jj)
+           if (l_j >= 2 .and. l_j <= 30) then
+               hqiv_low_l_avg = hqiv_low_l_avg + iCl_scalar(jj, C_Temp)
+               n_low = n_low + 1
+           end if
+           if (l_j >= 100 .and. l_j <= 200) then
+               hqiv_high_l_avg = hqiv_high_l_avg + iCl_scalar(jj, C_Temp)
+               n_high = n_high + 1
+           end if
+       end do
+       if (n_low > 0 .and. n_high > 0) then
+           hqiv_low_l_avg = hqiv_low_l_avg / n_low
+           hqiv_high_l_avg = hqiv_high_l_avg / n_high
+           if (hqiv_high_l_avg > 0._dl) then
+               hqiv_suppression = 100._dl * (1._dl - hqiv_low_l_avg / hqiv_high_l_avg)
+               write(*,'(A,ES12.4,A)') '  Low-ell suppression      = ', hqiv_suppression, ' %'
+           end if
+           write(*,'(A,ES12.4)') '  Avg D_l (l=2-30)         = ', hqiv_low_l_avg
+           write(*,'(A,ES12.4)') '  Avg D_l (l=100-200)      = ', hqiv_high_l_avg
+       end if
+
+       ! Recombination
+       hqiv_z_recomb = hqiv_zstar
+       hqiv_t_recomb_myr = State%DeltaPhysicalTimeGyr(0._dl, 1._dl/(1._dl+hqiv_z_recomb)) * 1000._dl
+       write(*,'(A,F8.2)')   '  z_star (recombination)   = ', hqiv_z_recomb
+       write(*,'(A,F8.3,A)') '  t(z_star) after BB       = ', hqiv_t_recomb_myr, ' Myr'
+       write(*,'(A,F7.2,A)') '  r_s(z_star)              = ', hqiv_rstar, ' Mpc'
+       write(*,'(A,F9.6)')   '  100*theta_star           = ', hqiv_thetastar
+
+       ! sigma_8 (from transfer functions if available)
+       if (CP%WantTransfer .and. allocated(State%MT%sigma_8)) then
+           if (size(State%MT%sigma_8) >= 1) then
+               write(*,'(A,F8.4)')  '  sigma_8 (z=0)            = ', State%MT%sigma_8(1)
+           end if
+       end if
+
+       ! Rough max coherent structure at z=2: use angular diameter distance
+       if (State%tau0 > 0._dl) then
+           hqiv_DA_z2 = State%AngularDiameterDistance(2._dl)
+           hqiv_struct_Mpc = hqiv_DA_z2 * const_pi / 6._dl
+           write(*,'(A,F8.1,A)') '  d_A(z=2)                 = ', hqiv_DA_z2, ' Mpc'
+           write(*,'(A,F8.1,A)') '  ~max structure (z=2)     = ', hqiv_struct_Mpc, ' Mpc'
+       end if
+
+       write(*,*) '========================================'
+       write(*,*) ''
+       end block
+    end if
 
     end subroutine CalcScalCls
 

@@ -171,6 +171,7 @@
         logical :: HQIV_mode = .false.
         integer :: hqiv_na = 0
         real(dl), allocatable :: hqiv_a(:), hqiv_H_over_H0(:)
+        real(dl) :: hqiv_lna_min = 0._dl, hqiv_dlna = 0._dl
 
         logical flat,closed
 
@@ -324,6 +325,7 @@
     real(dl) :: a, Hov
     if (.not. this%CP%HQIV) return
     if (allocated(this%hqiv_a)) deallocate(this%hqiv_a, this%hqiv_H_over_H0)
+    write(*,*) 'HQIV: Loading H(a) table from: ', trim(adjustl(this%CP%hqiv_Ha_file))
     open(unit=99, file=trim(adjustl(this%CP%hqiv_Ha_file)), status='old', action='read', iostat=ierr)
     if (ierr /= 0) then
         call GlobalError('HQIV: cannot open ' // trim(adjustl(this%CP%hqiv_Ha_file)), error_unsupported_params)
@@ -345,6 +347,17 @@
     close(99)
     this%hqiv_na = na
     this%HQIV_mode = .true.
+    ! Cache ln(a) spacing for O(1) index lookup
+    this%hqiv_lna_min = log(max(this%hqiv_a(1), 1.d-30))
+    if (na > 1) then
+        this%hqiv_dlna = (log(this%hqiv_a(na)) - this%hqiv_lna_min) / (na - 1)
+    else
+        this%hqiv_dlna = 1._dl
+    end if
+    write(*,'(A,I6,A,ES10.3,A,ES10.3,A)') ' HQIV: table loaded: ', na, &
+        ' points, a=[', this%hqiv_a(1), ', ', this%hqiv_a(na), ']'
+    write(*,'(A,ES12.5,A,ES12.5)') ' HQIV: H/H0 range: [', &
+        this%hqiv_H_over_H0(na), ', ', this%hqiv_H_over_H0(1), ']'
     end subroutine LoadHQIVTable
 
     function GetHoverH0(this, a) result(H_over_H0)
@@ -352,26 +365,25 @@
     real(dl), intent(in) :: a
     real(dl) :: H_over_H0
     integer :: j
-    real(dl) :: loga1, loga2, w
+    real(dl) :: lna, w
     H_over_H0 = 1._dl
     if (.not. this%HQIV_mode .or. this%hqiv_na < 2) return
     if (a <= this%hqiv_a(1)) then
-        H_over_H0 = this%hqiv_H_over_H0(1)
+        H_over_H0 = this%hqiv_H_over_H0(1) * (this%hqiv_a(1) / max(a, 1.d-30))**2
         return
     end if
     if (a >= this%hqiv_a(this%hqiv_na)) then
         H_over_H0 = this%hqiv_H_over_H0(this%hqiv_na)
         return
     end if
-    do j = 1, this%hqiv_na - 1
-        if (a >= this%hqiv_a(j) .and. a <= this%hqiv_a(j+1)) then
-            loga1 = log(max(this%hqiv_a(j), 1.d-30))
-            loga2 = log(this%hqiv_a(j+1))
-            w = (log(a) - loga1) / (loga2 - loga1)
-            H_over_H0 = (1._dl - w) * this%hqiv_H_over_H0(j) + w * this%hqiv_H_over_H0(j+1)
-            return
-        end if
-    end do
+    ! O(1) direct index lookup (table is uniform in ln(a))
+    lna = log(a)
+    j = 1 + int((lna - this%hqiv_lna_min) / this%hqiv_dlna)
+    j = max(1, min(j, this%hqiv_na - 1))
+    w = (lna - log(max(this%hqiv_a(j), 1.d-30))) / &
+        (log(this%hqiv_a(j+1)) - log(max(this%hqiv_a(j), 1.d-30)))
+    w = max(0._dl, min(1._dl, w))
+    H_over_H0 = (1._dl - w) * this%hqiv_H_over_H0(j) + w * this%hqiv_H_over_H0(j+1)
     end function GetHoverH0
 
     function GetGratio(this, a) result(G_ratio)
@@ -609,7 +621,16 @@
             this%nu_masses = 0
         end if
         call this%CP%DarkEnergy%Init(this)
+        if (this%CP%HQIV) write(*,*) 'HQIV: computing tau0 (conformal time to today)...'
         if (global_error_flag==0) this%tau0=this%TimeOfz(0._dl)
+        if (this%CP%HQIV) then
+            write(*,'(A,ES14.6,A)') ' HQIV: tau0 = ', this%tau0, ' Mpc'
+            if (this%tau0 /= this%tau0) then
+                write(*,*) 'HQIV ERROR: tau0 is NaN! Check hqiv_Ha.txt table.'
+            else if (this%tau0 > 1e7_dl) then
+                write(*,*) 'HQIV WARNING: tau0 very large (>1e7 Mpc). Table may be wrong.'
+            end if
+        end if
         if (global_error_flag==0) then
             this%chi0=this%rofChi(this%tau0/this%curvature_radius)
             this%scale= this%chi0*this%curvature_radius/this%tau0  !e.g. change l sampling depending on approx peak spacing

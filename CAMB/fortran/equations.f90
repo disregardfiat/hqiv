@@ -12,7 +12,15 @@
     real(dl) :: dtauda, grhoa2, grhov_t
 
     ! HQIV: use tabulated H(a) when available
+    ! dtauda = 1/(a^2 H) with H = H0*(H/H0). For a->0 in radiation era,
+    ! H/H0 ~ (a_min/a)^2 * H_min/H0, so a^2*H cancels to a constant.
+    ! Compute this safely to avoid 0/0 at a=0.
     if (this%CP%HQIV .and. this%hqiv_na > 0) then
+        if (a < 1.d-30) then
+            ! Asymptotic radiation limit: dtauda = 1/(H0 * H_over_H0(a_min) * a_min^2)
+            dtauda = (c/1000._dl) / (this%CP%H0 * this%hqiv_H_over_H0(1) * this%hqiv_a(1)**2)
+            return
+        end if
         grhov_t = GetHoverH0(this, a)
         if (grhov_t <= 0._dl) then
             call GlobalError('HQIV: GetHoverH0 <= 0 in background (check hqiv_Ha table)', error_unsupported_params)
