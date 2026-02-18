@@ -2315,12 +2315,12 @@
     end if
 
     ! HQIV covariant: modified Poisson k^2 Phi = -4 pi G(a) a^2 rho delta * inertia_factor
-    ! Use effective dgrho, dgq for constraint (z, etak) and later phi/phidot (ISW, lensing)
+    ! HQIV scale-dependent coupling — Steven Ettinger + Mr 4.20: use k in GetInertiaFactor for scale-dependent fac
     inertia_b = 1._dl
     if (State%CP%HQIV_covariant .and. State%HQIV_mode) then
         a_local_ratio = max(1._dl, k/(a*adotoa))
         G_ratio = GetGratio(State, a)
-        inertia_b = GetInertiaFactor(State, a, a_local_ratio)
+        inertia_b = GetInertiaFactor(State, a, a_local_ratio, k, clxb, vb)
         dgrho_eff = dgrho * G_ratio * inertia_b
         dgq_eff = dgq * G_ratio * inertia_b
         dgrho = dgrho_eff
@@ -2347,7 +2347,7 @@
     clxcdot=-k*z
     ayprime(ix_clxc)=clxcdot
 
-    !  Baryon equation of motion. HQIV covariant: inertia_factor in velocity term
+    !  Baryon equation of motion. HQIV scale-dependent coupling — Steven Ettinger + Mr 4.20: continuity uses inertia_b
     clxbdot=-k*(z+vb*inertia_b)
     ayprime(ix_clxb)=clxbdot
     !  Photon equation of motion
@@ -2371,8 +2371,9 @@
         delta_p_b = cs2*clxb
     end if
     ! HQIV covariant: c_s,eff^2 = c_s^2 / inertia_factor
+    ! HQIV scale-dependent coupling — Steven Ettinger + Mr 4.20: c_s,eff^2 = c_s^2 / fac
     if (State%CP%HQIV_covariant .and. State%HQIV_mode) then
-        cs2_eff = cs2 / max(inertia_b, 0.01_dl)
+        cs2_eff = cs2 / max(inertia_b, 0.35_dl)
     else
         cs2_eff = cs2
     end if
@@ -2442,9 +2443,9 @@
             vbdot = (-adotoa*vb + k*cs2_eff*clxb - photbar*opacity*(4._dl/3*vb-qg))
         end if
     end if
-    ! HQIV covariant: inertia_factor on LHS of Euler -> divide vbdot by inertia_b
+    ! HQIV scale-dependent coupling — Steven Ettinger + Mr 4.20: Euler LHS divide by inertia_b
     if (State%CP%HQIV_covariant .and. State%HQIV_mode) then
-        vbdot = vbdot / max(inertia_b, 0.01_dl)
+        vbdot = vbdot / max(inertia_b, 0.35_dl)
     end if
 
     ayprime(ix_vb)=vbdot

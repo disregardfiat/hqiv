@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HQIV 3D Cellular Automaton — Scarce Early Modes</title>
+<style>
+  body { margin:0; background:#000; overflow:hidden; }
+  #info { position:absolute; top:10px; left:10px; color:#0f0; font-family:Arial; z-index:100; }
+  #error { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#f66; font-size:18px; text-align:center; display:none; }
+</style>
+</head>
+<body>
+<div id="info">HQIV 3D CA • Scarce early modes + global angular momentum<br>Drag to rotate • Scroll to zoom • Space = pause</div>
+<div id="error">WebGL not available in this preview.<br>Save as .html and open in Chrome/Firefox.</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script>
+// =============== HQIV 3D CA — Lightweight & Robust ===============
+try {
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+  camera.position.set(0, 0, 90);
+
+  const renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  const gridSize = 40;   // lighter for smooth performance
+  const cellSize = 1.6;
+  const geometry = new THREE.BoxGeometry(cellSize, cellSize, cellSize);
+  const material = new THREE.MeshLambertMaterial({vertexColors:true});
+
+  const voxels = new THREE.InstancedMesh(geometry, material, gridSize**3);
+  scene.add(voxels);
+
+  const dummy = new THREE.Object3D();
+  const color = new THREE.Color();
+
+  let density = new Float32Array(gridSize*gridSize*gridSize);
+  let velocity = new Float32Array(gridSize*gridSize*gridSize*3);
+
+  function init() {
+    for(let i=0; i<gridSize**3; i++) {
+      let x = (i%gridSize) - gridSize/2;
+      let y = (Math.floor(i/gridSize)%gridSize) - gridSize/2;
+      let z = Math.floor(i/(gridSize*gridSize)) - gridSize/2;
+      let r = Math.sqrt(x*x + y*y + z*z);
+      density[i] = r < 7 ? 1.0 : 0.02;
+      velocity[i*3]   = -y * 0.06;
+      velocity[i*3+1] =  x * 0.06;
+      velocity[i*3+2] = 0;
+    }
+  }
+
+  const horizon = new THREE.Mesh(
+    new THREE.SphereGeometry(24, 32, 32),
+    new THREE.MeshBasicMaterial({color:0x00ff99, wireframe:true, transparent:true, opacity:0.15})
+  );
+  scene.add(horizon);
+
+  scene.add(new THREE.DirectionalLight(0xffffff, 1));
+  scene.add(new THREE.AmbientLight(0x404040));
+
+  let time = 0;
+  let paused = false;
+
+  function update() {
+    if (paused) return;
+    time += 0.025;
+    const hr = 19 + 6 * Math.sin(time*0.2);
+
+    for(let i=0; i<gridSize**3; i++) {
+      let x = (i%gridSize) - gridSize/2;
+      let y = (Math.floor(i/gridSize)%gridSize) - gridSize/2;
+      let z = Math.floor(i/(gridSize*gridSize)) - gridSize/2;
+      let r = Math.sqrt(x*x + y*y + z*z);
+      let damping = r > hr ? 0.84 : 1.0;
+      density[i] = Math.max(0.01, density[i] * damping + 0.009 * (velocity[i*3]*x + velocity[i*3+1]*y));
+    }
+
+    let idx = 0;
+    for(let i=0; i<gridSize**3; i++) {
+      let x = (i%gridSize) - gridSize/2;
+      let y = (Math.floor(i/gridSize)%gridSize) - gridSize/2;
+      let z = Math.floor(i/(gridSize*gridSize)) - gridSize/2;
+      dummy.position.set(x*cellSize, y*cellSize, z*cellSize);
+      dummy.updateMatrix();
+      voxels.setMatrixAt(idx, dummy.matrix);
+      let c = Math.min(1, density[i] * 2.8);
+      color.setRGB(c*0.1, c*0.9, c*1.0);
+      voxels.setColorAt(idx, color);
+      idx++;
+    }
+    voxels.instanceMatrix.needsUpdate = true;
+    voxels.instanceColor.needsUpdate = true;
+    horizon.scale.setScalar(hr * cellSize * 1.2);
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    update();
+    renderer.render(scene, camera);
+  }
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  let dragging = false, prevX=0, prevY=0;
+  document.addEventListener('mousedown', () => dragging = true);
+  document.addEventListener('mouseup', () => dragging = false);
+  document.addEventListener('mousemove', e => {
+    if (dragging) {
+      camera.position.x += (prevX - e.clientX) * 0.2;
+      camera.position.y -= (prevY - e.clientY) * 0.2;
+      prevX = e.clientX;
+      prevY = e.clientY;
+    }
+  });
+  document.addEventListener('wheel', e => camera.position.z += e.deltaY * 0.1);
+  document.addEventListener('keydown', e => { if (e.code === 'Space') paused = !paused; });
+
+  init();
+  animate();
+
+} catch(e) {
+  document.getElementById('error').style.display = 'block';
+  console.error(e);
+}
+</script>
+</body>
+</html>

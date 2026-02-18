@@ -174,6 +174,9 @@
         real(dl) :: hqiv_beta = 1.02_dl   ! O(1) from QI axiom; dynamic term A_eff = A_std + beta*H(t)^2
         ! HQIV covariant extension — full covariant HQIV
         logical :: HQIV_covariant = .false.
+        real(dl) :: hqiv_coupling_strength = 3.5_dl  ! Amplification of inertia reduction (QI Unruh/Casimir); tune 2.0–5.0
+        real(dl) :: hqiv_velocity_decouple = 500._dl ! Faster matter less coupled: coupling *= 1/(1 + this*|vb|); comoving preferred
+        real(dl) :: hqiv_bao_boost = 0.5_dl         ! Boost coupling in overdensities: coupling *= (1 + this*max(clxb,0))
 
         integer   :: MassiveNuMethod = Nu_best
 

@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HQIV 3D Cellular Automaton — Light-Cone Mode Quantization</title>
+<style>
+  body { margin:0; background:#000; overflow:hidden; font-family:'Courier New',monospace; }
+  #overlay { position:absolute; top:10px; left:10px; color:#0f0; z-index:100; 
+             background:rgba(0,0,0,0.8); padding:12px; border:1px solid #0a0; border-radius:4px; min-width:320px; }
+  #overlay h3 { margin:0 0 8px 0; color:#0ff; font-size:14px; }
+  .stat { margin:3px 0; font-size:12px; }
+  .highlight { color:#ff0; font-weight:bold; }
+  .checkpoint { color:#f0f; animation:pulse 0.5s infinite; }
+  @keyframes pulse { 0%{opacity:1;} 50%{opacity:0.5;} 100%{opacity:1;} }
+  #controls { position:absolute; bottom:10px; left:10px; color:#888; font-size:11px; }
+  #error { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#f66; 
+           font-size:18px; text-align:center; display:none; }
+  #anisotropy { position:absolute; top:10px; right:10px; color:#0ff; z-index:100;
+                background:rgba(0,0,0,0.8); padding:12px; border:1px solid #0ff; border-radius:4px; display:none; }
+  #anisotropy h3 { margin:0 0 8px 0; font-size:14px; }
+  #anisotropy canvas { display:block; margin-top:8px; border:1px solid #333; }
+  .aniso-stat { font-size:11px; color:#888; margin-top:4px; }
+</style>
+</head>
+<body>
+<div id="overlay">
+  <h3>HQIV Light-Cone Mode + Angular Momentum</h3>
+  <div class="stat" id="stat-gen">Generation: 0</div>
+  <div class="stat" id="stat-modes">Allowed Modes: 0</div>
+  <div class="stat" id="stat-coherence">Angular Coherence: 0.000</div>
+  <div class="stat" id="stat-time">Time: 0.00 Kyr</div>
+  <div class="stat" id="stat-horizon">Horizon Θ: 0.0 Mpc</div>
+  <div class="stat" id="stat-structure">Max Structure: 0.0 Mpc</div>
+  <div class="stat" id="stat-bulk">Bulk Energy: 0.0%</div>
+  <div class="stat checkpoint" id="stat-recomb" style="display:none;">★ RECOMBINATION - PAUSED ★</div>
+</div>
+<div id="anisotropy">
+  <h3>CMB Anisotropy Map (Mollweide)</h3>
+  <canvas id="anisoCanvas" width="512" height="256"></canvas>
+  <div class="aniso-stat" id="aniso-stat">Samples: 0 | l-range: 0-0</div>
+</div>
+<div id="controls">Drag: rotate • Scroll: zoom • Space: pause/resume • R: reset • A: anisotropy</div>
+<div id="error">WebGL not available. Save as .html and open in Chrome/Firefox.</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script>
+// ============================================================
+// HQIV 3D Cellular Automaton - Light-Cone Mode Quantization
+// Steven Ettinger + Mr 4.20
+// ============================================================
+
+// Increased resolution: 80^3 = 512,000 cells for l~1200 anisotropy
+const GRID_SIZE = 80;
+const CELL_SIZE = 1.0;
+const MPc_to_grid = 0.15;
+const RECOMB_TAU = 0.51;
+const DAMPING_OUTSIDE = 0.85;
+const ENERGY_THRESHOLD = 0.05;
+const PRINT_EVERY = 3;
+
+let energy, velocityX, velocityY, velocityZ, inertia;
+let gridSize = GRID_SIZE;
+let generation = 0;
+let simTime = 0;
+let paused = false;
+let recombinationReached = false;
+let recombinationSnapshot = null;
+
+let scene, camera, renderer, points, horizonSphere;
+let maxStructureSize = 0;
+let cameraDir = new THREE.Vector3(0, 0, -1);
+
+function initArrays() {
+  const n = gridSize * gridSize * gridSize;
+  energy = new Float32Array(n);
+  velocityX = new Float32Array(n);
+  velocityY = new Float32Array(n);
+  velocityZ = new Float32Array(n);
+  inertia = new Float32Array(n);
+  
+  // Smaller initial horizon for more sparse early modes
+  const earlyHorizon = 3;
+  for(let i=0; i<n; i++) {
+    let x = (i % gridSize) - gridSize/2;
+    let y = (Math.floor(i/gridSize) % gridSize) - gridSize/2;
+    let z = Math.floor(i/(gridSize*gridSize)) - gridSize/2;
+    let r = Math.sqrt(x*x + y*y + z*z);
+    
+    if (r < earlyHorizon) {
+      energy[i] = 0.9 + Math.random() * 0.3;
+      let mag = 0.06;
+      let theta = Math.random() * Math.PI * 2;
+      let phi = Math.random() * Math.PI;
+      velocityX[i] = mag * Math.sin(phi) * Math.cos(theta);
+      velocityY[i] = mag * Math.sin(phi) * Math.sin(theta);
+      velocityZ[i] = mag * Math.cos(phi);
+      inertia[i] = 0.5 + Math.random() * 0.5;
+    } else {
+      energy[i] = 0.01 + Math.random() * 0.02;
+      velocityX[i] = 0;
+      velocityY[i] = 0;
+      velocityZ[i] = 0;
+      inertia[i] = 1.0;
+    }
+  }
+  console.log('Initialized ' + n + ' cells at ' + gridSize + '^3 resolution');
+}
+
+function getHorizonRadius(timeKyr) {
+  let t_norm = Math.max(timeKyr, 1) / RECOMB_TAU;
+  let baseHorizon = 164;
+  return baseHorizon * Math.pow(t_norm, 0.67);
+}
+
+function getScaleFactor(timeKyr) {
+  let t_norm = Math.max(timeKyr, 1) / RECOMB_TAU;
+  return Math.pow(t_norm, 0.67);
+}
+
+function getNeighbors(i) {
+  let x = i % gridSize;
+  let y = Math.floor(i/gridSize) % gridSize;
+  let z = Math.floor(i/(gridSize*gridSize));
+  let neighbors = [];
+  
+  if (x > 0) neighbors.push(i - 1);
+  if (x < gridSize-1) neighbors.push(i + 1);
+  if (y > 0) neighbors.push(i - gridSize);
+  if (y < gridSize-1) neighbors.push(i + gridSize);
+  if (z > 0) neighbors.push(i - gridSize*gridSize);
+  if (z < gridSize-1) neighbors.push(i + gridSize*gridSize);
+  
+  return neighbors;
+}
+
+function getCellCoord(i) {
+  return {
+    x: (i % gridSize) - gridSize/2,
+    y: (Math.floor(i/gridSize) % gridSize) - gridSize/2,
+    z: Math.floor(i/(gridSize*gridSize)) - gridSize/2
+  };
+}
+
+function isInBulk(i) {
+  let c = getCellCoord(i);
+  let dist = Math.sqrt(c.x*c.x + c.y*c.y + c.z*c.z);
+  return dist < gridSize * 0.35;
+}
+
+function updateCA() {
+  if (paused) return;
+  
+  generation++;
+  simTime += 1.5; // Slower for better resolution
+  
+  let horizonRadius = getHorizonRadius(simTime);
+  let horizonGrid = horizonRadius * MPc_to_grid;
+  let scaleFactor = getScaleFactor(simTime);
+  
+  const n = gridSize * gridSize * gridSize;
+  let newEnergy = new Float32Array(n);
+  let totalVx = 0, totalVy = 0, totalVz = 0;
+  let allowedModes = 0;
+  let bulkCells = 0;
+  let bulkLowEnergy = 0;
+  
+  for(let i=0; i<n; i++) {
+    let c = getCellCoord(i);
+    let r = Math.sqrt(c.x*c.x + c.y*c.y + c.z*c.z);
+    let insideHorizon = r < horizonGrid;
+    let e = energy[i];
+    let vx = velocityX[i];
+    let vy = velocityY[i];
+    let vz = velocityZ[i];
+    
+    let neighbors = getNeighbors(i);
+    let neighborEnergy = 0;
+    let neighborVx = 0, neighborVy = 0, neighborVz = 0;
+    
+    for(let ni of neighbors) {
+      neighborEnergy += energy[ni];
+      neighborVx += velocityX[ni];
+      neighborVy += velocityY[ni];
+      neighborVz += velocityZ[ni];
+    }
+    let numNeighbors = neighbors.length;
+    if (numNeighbors > 0) {
+      neighborEnergy /= numNeighbors;
+      neighborVx /= numNeighbors;
+      neighborVy /= numNeighbors;
+      neighborVz /= numNeighbors;
+    }
+    
+    let newE = e;
+    
+    if (insideHorizon) {
+      if (e > ENERGY_THRESHOLD) {
+        let densityDiff = neighborEnergy - e;
+        newE += densityDiff * 0.08 * scaleFactor;
+        
+        vx = vx * 0.92 + neighborVx * 0.08;
+        vy = vy * 0.92 + neighborVy * 0.08;
+        vz = vz * 0.92 + neighborVz * 0.08;
+        
+        let inertiaReduction = 1.0 - 0.15 * Math.min(1, (e - ENERGY_THRESHOLD) * 3);
+        vx *= inertiaReduction;
+        vy *= inertiaReduction;
+        vz *= inertiaReduction;
+      }
+      
+      newE += 0.001 * scaleFactor;
+      
+      let zBias = 0.0003 * (1.0 + generation * 0.00005);
+      vz += zBias;
+    } else {
+      newE *= DAMPING_OUTSIDE;
+      vx *= DAMPING_OUTSIDE;
+      vy *= DAMPING_OUTSIDE;
+      vz *= DAMPING_OUTSIDE;
+    }
+    
+    newE = Math.max(0.01, newE);
+    newE = Math.min(2.0, newE);
+    
+    newEnergy[i] = newE;
+    velocityX[i] = vx;
+    velocityY[i] = vy;
+    velocityZ[i] = vz;
+    
+    if (isInBulk(i)) {
+      bulkCells++;
+      if (newE < ENERGY_THRESHOLD * 1.5) {
+        bulkLowEnergy++;
+      }
+    }
+    
+    if (insideHorizon && newE > ENERGY_THRESHOLD) {
+      allowedModes++;
+      totalVx += vx;
+      totalVy += vy;
+      totalVz += vz;
+    }
+  }
+  
+  energy = newEnergy;
+  
+  let bulkFraction = bulkCells > 0 ? bulkLowEnergy / bulkCells : 0;
+  if (!recombinationReached && bulkFraction > 0.5) {
+    recombinationReached = true;
+    paused = true; // Auto-pause at recombination!
+    document.getElementById('stat-recomb').style.display = 'block';
+    console.log('★ RECOMBINATION at ' + simTime.toFixed(1) + ' Kyr (bulk: ' + (bulkFraction*100).toFixed(1) + '%) ★');
+    recombinationSnapshot = {
+      energy: new Float32Array(energy),
+      time: simTime,
+      generation: generation
+    };
+    generateAnisotropyMap();
+  }
+  
+  let coherence = 0;
+  if (allowedModes > 0) {
+    let avgVx = totalVx / allowedModes;
+    let avgVy = totalVy / allowedModes;
+    let avgVz = totalVz / allowedModes;
+    let mag = Math.sqrt(avgVx*avgVx + avgVy*avgVy + avgVz*avgVz) + 0.0001;
+    coherence = Math.abs(avgVz) / mag;
+  }
+  
+  maxStructureSize = calculateMaxStructure() * (CELL_SIZE / MPc_to_grid) * 0.7;
+  horizonSphere.scale.setScalar(horizonGrid * CELL_SIZE * 0.6);
+  
+  if (generation % PRINT_EVERY === 0) {
+    updateStats(allowedModes, coherence, horizonRadius, bulkFraction);
+  }
+  
+  updateVisualization();
+}
+
+function calculateMaxStructure() {
+  const n = gridSize * gridSize * gridSize;
+  let visited = new Uint8Array(n);
+  let maxSize = 0;
+  
+  for(let i=0; i<n; i++) {
+    if (energy[i] > ENERGY_THRESHOLD && !visited[i]) {
+      let size = 0;
+      let queue = [i];
+      visited[i] = 1;
+      
+      while(queue.length > 0) {
+        let curr = queue.shift();
+        size++;
+        
+        let neighbors = getNeighbors(curr);
+        for(let ni of neighbors) {
+          if (energy[ni] > ENERGY_THRESHOLD && !visited[ni]) {
+            visited[ni] = 1;
+            queue.push(ni);
+          }
+        }
+      }
+      maxSize = Math.max(maxSize, size);
+    }
+  }
+  
+  return Math.pow(maxSize, 1/3);
+}
+
+function updateStats(modes, coherence, horizon, bulkFrac) {
+  document.getElementById('stat-gen').textContent = 'Generation: ' + generation;
+  document.getElementById('stat-modes').textContent = 'Modes: ' + modes.toLocaleString();
+  document.getElementById('stat-coherence').textContent = 'Coherence: ' + coherence.toFixed(4);
+  document.getElementById('stat-time').textContent = 'Time: ' + simTime.toFixed(1) + ' Kyr';
+  document.getElementById('stat-horizon').textContent = 'Horizon: ' + horizon.toFixed(1) + ' Mpc';
+  document.getElementById('stat-structure').textContent = 'Structure: ' + maxStructureSize.toFixed(1) + ' Mpc';
+  document.getElementById('stat-bulk').textContent = 'Bulk: ' + (bulkFrac * 100).toFixed(1) + '%';
+  
+  let cohEl = document.getElementById('stat-coherence');
+  if (coherence > 0.6) {
+    cohEl.classList.add('highlight');
+  } else {
+    cohEl.classList.remove('highlight');
+  }
+}
+
+function updateVisualization() {
+  const positions = points.geometry.attributes.position.array;
+  const colors = points.geometry.attributes.color.array;
+  
+  camera.getWorldDirection(cameraDir);
+  
+  for(let i=0; i<gridSize*gridSize*gridSize; i++) {
+    let c = getCellCoord(i);
+    
+    positions[i*3] = c.x * CELL_SIZE;
+    positions[i*3+1] = c.y * CELL_SIZE;
+    positions[i*3+2] = c.z * CELL_SIZE;
+    
+    let e = energy[i];
+    let vx = velocityX[i];
+    let vy = velocityY[i];
+    let vz = velocityZ[i];
+    
+    let vMag = Math.sqrt(vx*vx + vy*vy + vz*vz) + 0.0001;
+    let vDir = new THREE.Vector3(vx, vy, vz).normalize();
+    let dot = vDir.dot(cameraDir);
+    
+    // Brighter for higher energy
+    let brightness = Math.pow(e * 2.0, 1.8);
+    brightness = Math.min(1.0, brightness);
+    
+    let r, g, b;
+    if (dot > 0) {
+      r = brightness * (0.3 + dot * 0.7);
+      g = brightness * 0.7 * (1 - dot);
+      b = brightness * 0.8 * (1 - dot * 0.5);
+    } else {
+      r = brightness * 0.3 * (1 + dot);
+      g = brightness * (0.7 - dot * 0.3);
+      b = brightness * 0.8;
+    }
+    
+    colors[i*3] = r;
+    colors[i*3+1] = g;
+    colors[i*3+2] = b;
+  }
+  
+  points.geometry.attributes.position.needsUpdate = true;
+  points.geometry.attributes.color.needsUpdate = true;
+}
+
+// Mollweide projection for CMB anisotropy
+function mollweide(lon, lat, width, height) {
+  const phi = lat;
+  const theta = lon;
+  const R = Math.min(width, height) * 0.45;
+  
+  if (Math.abs(phi) > Math.PI / 2) return null;
+  
+  const sinPhi = Math.sin(phi);
+  const cosPhi = Math.cos(phi);
+  const sinTheta = Math.sin(theta);
+  const cosTheta = Math.cos(theta);
+  
+  const cotPhi = cosPhi / (sinPhi + 0.001);
+  
+  const x = R * 2 * sinTheta * cosPhi / (Math.PI * Math.sqrt(1 + cosPhi * cosPhi));
+  const y = R * sinPhi / (Math.PI / 2);
+  
+  return {
+    x: width / 2 + x * R,
+    y: height / 2 - y * R
+  };
+}
+
+function generateAnisotropyMap() {
+  if (!recombinationSnapshot) return;
+  
+  document.getElementById('anisotropy').style.display = 'block';
+  
+  const canvas = document.getElementById('anisoCanvas');
+  const ctx = canvas.getContext('2d');
+  const width = canvas.width;
+  const height = canvas.height;
+  
+  // Black background
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, width, height);
+  
+  // Draw Mollweide grid lines
+  ctx.strokeStyle = '#222';
+  ctx.lineWidth = 1;
+  
+  // Latitude lines
+  for (let lat of [-60, -30, 0, 30, 60]) {
+    let rad = lat * Math.PI / 180;
+    ctx.beginPath();
+    for (let lon = -Math.PI; lon <= Math.PI; lon += 0.02) {
+      let pt = mollweide(lon, rad, width, height);
+      if (pt) {
+        if (lon === -Math.PI) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      }
+    }
+    ctx.stroke();
+  }
+  
+  // Longitude lines
+  for (let lon of [-120, -60, 0, 60, 120]) {
+    let rad = lon * Math.PI / 180;
+    ctx.beginPath();
+    for (let lat = -Math.PI/2; lat <= Math.PI/2; lat += 0.02) {
+      let pt = mollweide(rad, lat, width, height);
+      if (pt) {
+        if (lat === -Math.PI/2) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      }
+    }
+    ctx.stroke();
+  }
+  
+  const centerX = 0;
+  const centerY = 0;
+  const centerZ = 0;
+  const radius = gridSize * 0.38;
+  
+  const samples = [];
+  let minE = Infinity, maxE = -Infinity;
+  
+  // Collect samples from sphere surface
+  for (let i = 0; i < gridSize*gridSize*gridSize; i++) {
+    let c = getCellCoord(i);
+    let dx = c.x - centerX;
+    let dy = c.y - centerY;
+    let dz = c.z - centerZ;
+    let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+    
+    if (Math.abs(dist - radius) < 1.5) {
+      let theta = Math.atan2(dy, dx);
+      let phi = Math.acos(dz / (dist + 0.001));
+      
+      let e = recombinationSnapshot.energy[i];
+      samples.push({theta, phi, energy: e});
+      minE = Math.min(minE, e);
+      maxE = Math.max(maxE, e);
+    }
+  }
+  
+  // Draw samples
+  let eRange = maxE - minE || 1;
+  
+  for (let s of samples) {
+    let pt = mollweide(s.theta, s.phi - Math.PI/2, width, height);
+    if (pt && pt.x > 0 && pt.x < width && pt.y > 0 && pt.y < height) {
+      let norm = (s.energy - minE) / eRange;
+      let brightness = Math.floor(norm * 255);
+      
+      // CMB-style colormap: blue -> white -> red
+      let r, g, b;
+      if (norm < 0.5) {
+        r = brightness * 0.4;
+        g = brightness * 0.7;
+        b = brightness;
+      } else {
+        r = brightness;
+        g = brightness * (1 - (norm - 0.5) * 0.6);
+        b = brightness * (1 - (norm - 0.5) * 1.2);
+      }
+      
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.fillRect(pt.x - 1, pt.y - 1, 2, 2);
+    }
+  }
+  
+  // Estimate l range from samples
+  let lMax = Math.floor(samples.length / 3);
+  document.getElementById('aniso-stat').textContent = 
+    `Samples: ${samples.length.toLocaleString()} | l-range: ~0-${lMax}`;
+  
+  console.log('Anisotropy: ' + samples.length + ' samples, l~0-' + lMax);
+}
+
+function showAnisotropy() {
+  if (recombinationSnapshot) {
+    generateAnisotropyMap();
+  } else {
+    console.log('Run until recombination');
+  }
+}
+
+function initThree() {
+  scene = new THREE.Scene();
+  
+  camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 1, 2000);
+  camera.position.set(100, 80, 120);
+  camera.lookAt(0, 0, 0);
+  
+  renderer = new THREE.WebGLRenderer({antialias:false});
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+  
+  const n = gridSize * gridSize * gridSize;
+  const positions = new Float32Array(n * 3);
+  const colors = new Float32Array(n * 3);
+  
+  points = new THREE.Points(
+    new THREE.BufferGeometry(),
+    new THREE.PointsMaterial({size: CELL_SIZE * 1.2, vertexColors: true, 
+                              transparent: true, opacity: 0.9})
+  );
+  points.geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  points.geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  scene.add(points);
+  
+  horizonSphere = new THREE.Mesh(
+    new THREE.SphereGeometry(1, 48, 32),
+    new THREE.MeshBasicMaterial({color: 0x00ff66, wireframe: true, 
+                                 transparent: true, opacity: 0.2})
+  );
+  scene.add(horizonSphere);
+  
+  scene.add(new THREE.DirectionalLight(0xffffff, 0.6));
+  scene.add(new THREE.AmbientLight(0x303030));
+}
+
+function reset() {
+  generation = 0;
+  simTime = 0;
+  recombinationReached = false;
+  recombinationSnapshot = null;
+  maxStructureSize = 0;
+  paused = false;
+  document.getElementById('stat-recomb').style.display = 'none';
+  document.getElementById('anisotropy').style.display = 'none';
+  initArrays();
+  updateVisualization();
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  updateCA();
+  renderer.render(scene, camera);
+}
+
+function setupEvents() {
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+  
+  let dragging = false, prevX = 0, prevY = 0;
+  let rotX = 0.4, rotY = 0.6;
+  
+  function updateCamera() {
+    camera.position.x = 140 * Math.sin(rotY) * Math.cos(rotX);
+    camera.position.y = 140 * Math.sin(rotX);
+    camera.position.z = 140 * Math.cos(rotY) * Math.cos(rotX);
+    camera.lookAt(0, 0, 0);
+  }
+  
+  document.addEventListener('mousedown', e => {
+    dragging = true;
+    prevX = e.clientX;
+    prevY = e.clientY;
+  });
+  
+  document.addEventListener('mouseup', () => dragging = false);
+  
+  document.addEventListener('mousemove', e => {
+    if (dragging) {
+      let dx = e.clientX - prevX;
+      let dy = e.clientY - prevY;
+      rotY += dx * 0.005;
+      rotX += dy * 0.005;
+      rotX = Math.max(-1.5, Math.min(1.5, rotX));
+      updateCamera();
+      prevX = e.clientX;
+      prevY = e.clientY;
+    }
+  });
+  
+  document.addEventListener('wheel', e => {
+    let dist = camera.position.length();
+    dist += e.deltaY * 0.15;
+    dist = Math.max(40, Math.min(300, dist));
+    camera.position.normalize().multiplyScalar(dist);
+  });
+  
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space') {
+      paused = !paused;
+      e.preventDefault();
+    } else if (e.code === 'KeyR') {
+      reset();
+    } else if (e.code === 'KeyA') {
+      showAnisotropy();
+    }
+  });
+  
+  updateCamera();
+}
+
+try {
+  initThree();
+  initArrays();
+  updateVisualization();
+  setupEvents();
+  animate();
+  console.log('HQIV 3D CA: 80^3 = 512K cells for l~1200 CMB anisotropy');
+  console.log('Auto-pauses at recombination - press A for anisotropy map');
+} catch(e) {
+  document.getElementById('error').style.display = 'block';
+  console.error(e);
+}
+</script>
+</body>
+</html>

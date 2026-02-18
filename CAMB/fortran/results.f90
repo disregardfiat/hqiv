@@ -408,17 +408,34 @@
     Theta_Mpc = 2._dl * (c/1000._dl) / (this%CP%H0 * H_over_H0)
     end function GetTheta
 
-    function GetInertiaFactor(this, a, a_local_ratio) result(fac)
-    ! HQIV covariant: m_i/m_g = 1 - beta*c*H/|a_local|. Pass a_local_ratio = |a_local|/(c*H) (dimensionless).
-    ! fac = 1 - beta / max(a_local_ratio, 1.01) for stability.
+    function GetInertiaFactor(this, a, a_local_ratio, k, clxb, vb) result(fac)
+    ! HQIV coupling: preference for comoving matter; faster matter less coupled to outside universe.
+    ! m_i/m_g = 1 - coupling_term; coupling_term = strength*(beta/r)*scale_factor*bao_mod*velocity_suppress.
+    ! velocity_suppress = 1/(1 + gamma*|vb|): fast matter (large |vb|) -> less coupling.
+    ! bao_mod = 1 + alpha*max(clxb,0): overdensities get stronger coupling (structure grows from BAO).
+    ! scale_factor: peaks at BAO scale k ~ k_BAO.
     class(CAMBdata) :: this
-    real(dl), intent(in) :: a, a_local_ratio
-    real(dl) :: fac, r
+    real(dl), intent(in) :: a, a_local_ratio, k, clxb, vb
+    real(dl) :: fac, r, Theta_Mpc, k_BAO, x, scale_factor, velocity_suppress, bao_mod, coupling_term
     fac = 1._dl
     if (.not. this%CP%HQIV_covariant) return
     r = max(abs(a_local_ratio), 1.01_dl)
-    fac = 1._dl - this%CP%hqiv_beta / r
-    fac = max(fac, 0.01_dl)
+    ! BAO scale: k_BAO ~ 2*pi/r_s ~ 0.04–0.05 h/Mpc; use Theta as proxy for angular scale
+    Theta_Mpc = GetTheta(this, 1._dl)
+    if (Theta_Mpc > 0._dl) then
+        k_BAO = const_twopi / Theta_Mpc * 0.8_dl   ! peak coupling near BAO
+        x = (k - k_BAO) / max(k_BAO * 0.5_dl, 1.d-30)
+        scale_factor = 1._dl + 1.5_dl * (0.5_dl + 0.5_dl * tanh(x))
+    else
+        scale_factor = 1._dl
+    end if
+    ! Faster matter -> less coupled; comoving matter (small |vb|) gets full coupling
+    velocity_suppress = 1._dl / (1._dl + this%CP%hqiv_velocity_decouple * abs(vb))
+    ! Overdensities (clxb > 0) get boosted coupling so structure grows from BAO peaks
+    bao_mod = 1._dl + this%CP%hqiv_bao_boost * max(clxb, 0._dl)
+    coupling_term = this%CP%hqiv_coupling_strength * (this%CP%hqiv_beta / r) * scale_factor * bao_mod * velocity_suppress
+    fac = 1._dl - coupling_term
+    fac = max(fac, 0.35_dl)
     end function GetInertiaFactor
 
     subroutine CAMBdata_SetParams(this, P, error, DoReion, call_again, background_only)

@@ -424,6 +424,9 @@
         P%hqiv_cs2_fac = Ini%Read_Double('hqiv_cs2_fac', 1.d0)
         P%hqiv_l_cut = Ini%Read_Double('hqiv_l_cut', 38.d0)
         P%hqiv_beta = Ini%Read_Double('hqiv_beta', 1.02d0)
+        P%hqiv_coupling_strength = Ini%Read_Double('hqiv_coupling_strength', 3.5d0)
+        P%hqiv_velocity_decouple = Ini%Read_Double('hqiv_velocity_decouple', 500.d0)
+        P%hqiv_bao_boost = Ini%Read_Double('hqiv_bao_boost', 0.5d0)
     end if
     P%HQIV_covariant = Ini%Read_Logical('HQIV_covariant', .false.)
     if (P%HQIV_covariant) P%HQIV = .true.

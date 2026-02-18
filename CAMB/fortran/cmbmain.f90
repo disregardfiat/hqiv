@@ -2424,13 +2424,16 @@
        write(*,'(A,F8.2,A)') '  Universe age today       = ', hqiv_age, ' Gyr'
        write(*,'(A,ES12.5,A)') '  tau0 (conformal time)    = ', State%tau0, ' Mpc'
        write(*,'(A,F8.4)')   '  HQIV_beta                = ', CP%hqiv_beta
+       write(*,'(A,F8.4)')   '  hqiv_coupling_strength    = ', CP%hqiv_coupling_strength
+       write(*,'(A,F8.2)')   '  hqiv_velocity_decouple    = ', CP%hqiv_velocity_decouple
+       write(*,'(A,F8.4)')   '  hqiv_bao_boost            = ', CP%hqiv_bao_boost
 
-       ! First acoustic peak from iCl_scalar
+       ! First acoustic peak from iCl_scalar (search range includes l~220)
        hqiv_peak_ell = 0._dl
        hqiv_peak_val = 0._dl
        do jj = 1, CTrans%ls%nl
            l_j = CTrans%ls%l(jj)
-           if (l_j >= 100 .and. l_j <= 400) then
+           if (l_j >= 50 .and. l_j <= 450) then
                hqiv_Dl_val = iCl_scalar(jj, C_Temp)
                if (hqiv_Dl_val > hqiv_peak_val) then
                    hqiv_peak_val = hqiv_Dl_val
