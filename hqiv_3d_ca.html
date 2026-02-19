@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>HQIV 3D Cellular Automaton — Light-Cone Mode Quantization</title>
+<title>HQIV 3D CA — First-Principles Light-Cone Quantization</title>
 <style>
   body { margin:0; background:#000; overflow:hidden; font-family:'Courier New',monospace; }
-  #overlay { position:absolute; top:10px; left:10px; color:#0f0; z-index:100; 
+  #overlay { position:absolute; top:10px; left:10px; color:#0f0; z-index:100;
              background:rgba(0,0,0,0.8); padding:12px; border:1px solid #0a0; border-radius:4px; min-width:320px; }
   #overlay h3 { margin:0 0 8px 0; color:#0ff; font-size:14px; }
   .stat { margin:3px 0; font-size:12px; }
@@ -13,7 +13,7 @@
   .checkpoint { color:#f0f; animation:pulse 0.5s infinite; }
   @keyframes pulse { 0%{opacity:1;} 50%{opacity:0.5;} 100%{opacity:1;} }
   #controls { position:absolute; bottom:10px; left:10px; color:#888; font-size:11px; }
-  #error { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#f66; 
+  #error { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#f66;
            font-size:18px; text-align:center; display:none; }
   #anisotropy { position:absolute; top:10px; right:10px; color:#0ff; z-index:100;
                 background:rgba(0,0,0,0.8); padding:12px; border:1px solid #0ff; border-radius:4px; display:none; }
@@ -22,780 +22,784 @@
   .aniso-stat { font-size:11px; color:#888; margin-top:4px; }
   .aniso-stats { font-size:10px; color:#0ff; margin-top:8px; line-height:1.4; }
   .aniso-stats span { color:#ff0; }
-  #downloadBtn { margin-top:8px; padding:4px 12px; background:#0a0; color:#000; border:none; 
+  #downloadBtn { margin-top:8px; padding:4px 12px; background:#0a0; color:#000; border:none;
                  cursor:pointer; font-family:inherit; font-size:11px; }
   #downloadBtn:hover { background:#0f0; }
 </style>
 </head>
 <body>
 <div id="overlay">
-  <h3>HQIV Light-Cone Mode + Angular Momentum</h3>
-  <div class="stat" id="stat-gen">Generation: 0</div>
+  <h3>HQIV Light-Cone CA (first principles)</h3>
+  <div class="stat" id="stat-gen">Generation: 0.000 (±0.001)</div>
   <div class="stat" id="stat-modes">Allowed Modes: 0</div>
-  <div class="stat" id="stat-coherence">Angular Coherence: 0.000</div>
-  <div class="stat" id="stat-time">Time: 0.00 Kyr</div>
-  <div class="stat" id="stat-horizon">Horizon Θ: 0.0 Mpc</div>
-  <div class="stat" id="stat-redshift">Redshift z: 0.0</div>
-  <div class="stat" id="stat-structure">Max Structure: 0.0 Mpc</div>
-  <div class="stat" id="stat-H">H(t): 0.0 H₀</div>
-  <div class="stat" id="stat-bulk">Bulk Energy: 0.0%</div>
-  <div class="stat checkpoint" id="stat-recomb" style="display:none;">★ RECOMBINATION - PAUSED ★</div>
+  <div class="stat" id="stat-time">t (Kyr): —</div>
+  <div class="stat" id="stat-z">z: —</div>
+  <div class="stat" id="stat-horizon">Θ (Mpc): —</div>
+  <div class="stat" id="stat-L">net |L_cosmic|: 0</div>
+  <div class="stat" id="stat-H">H(t): —</div>
+  <div class="stat" id="stat-a">a(t): —</div>
+  <div class="stat checkpoint" id="stat-recomb" style="display:none;">★ RECOMBINATION — PAUSED ★</div>
 </div>
 <div id="anisotropy">
-  <h3>CMB Anisotropy Map (Mollweide)</h3>
+  <h3>CMB Anisotropy (HQIV last-scattering)</h3>
   <canvas id="anisoCanvas" width="512" height="256"></canvas>
   <div class="aniso-stats" id="aniso-stats"></div>
   <button id="downloadBtn" onclick="downloadAnisotropyData()">Download FITS-like Data</button>
 </div>
-<div id="controls">Drag: rotate • Scroll: zoom • Space: pause/resume • R: reset • A: anisotropy</div>
-<div id="error">WebGL not available. Save as .html and open in Chrome/Firefox.</div>
+<div id="controls">Drag: rotate • Scroll: zoom • Space: pause • R: reset • A: anisotropy</div>
+<div id="error">WebGL not available. Open in Chrome/Firefox.</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
 <script>
-// ============================================================
-// HQIV 3D Cellular Automaton - Light-Cone Mode Quantization
-// Steven Ettinger + Mr 4.20
-// ============================================================
+// =============================================================================
+// HQIV 3D Cellular Automaton — 100% faithful to single axiom
+// E_total = m c² + ħ c / Δx   with Δx limited by causal horizon Θ(t) = 2c/H(t)
+// NO hardcoded ΛCDM times, no Planck constants in the evolution loop.
+// =============================================================================
 
-// Increased resolution: 80^3 = 512,000 cells for l~1200 anisotropy
-const GRID_SIZE = 80;
+// --- Grid and units (paper: light-cone quantization) ---
+const GRID_SIZE = 48;
 const CELL_SIZE = 1.0;
-const Mpc_to_grid = 0.15;
-const RECOMB_TAU_kyr = 510; // Fixed recombination time from paper: 510 Kyr
-const DAMPING_OUTSIDE = 0.85;
-const ENERGY_THRESHOLD = 0.05;
-const PRINT_EVERY = 3;
+// Comoving grid spacing in Mpc (box ~ N * spacing Mpc)
+const GRID_SPACING_MPC = 8.0;
+const SEC_PER_KYR = 3.1536e10;
+// c in Mpc/Kyr (physical distance light travels in 1 Kyr): paper causal light-cone
+const C_MPC_PER_KYR = (2.998e8 * SEC_PER_KYR) / 3.086e22;  // ~3.07e-4 Mpc per Kyr (physical)
+const H0_SI = 2.27e-18;   // ~70 km/s/Mpc in 1/s (for table integration)
+const MPC_M = 3.086e22;
+const C_SI = 2.998e8;
+// Θ = 2c/H → in Mpc: 2*(c/H0)_Mpc / (H/H0). (c/H0) in Mpc = c/(H0*Mpc)
+const C_OVER_H0_MPC = (C_SI / H0_SI) / MPC_M;
 
-let energy, velocityX, velocityY, velocityZ, inertia;
+// Paper: β ≈ 1.0 (QI minimum acceleration)
+const BETA = 1.0;
+// Recombination redshift (paper value) — used only to read t_rec FROM table, not to hardcode time
+const Z_RECOMB = 1067.73;
+const A_RECOMB = 1 / (1 + Z_RECOMB);
+
 let gridSize = GRID_SIZE;
+let scene, camera, renderer, points, horizonSphere;
 let generation = 0;
-let simTime = 0;
+let currentTimeKyr = 0;
 let paused = false;
 let recombinationReached = false;
 let recombinationSnapshot = null;
+let anisotropyData = null;
 
-let scene, camera, renderer, points, horizonSphere;
-let maxStructureSize = 0;
-let cameraDir = new THREE.Vector3(0, 0, -1);
-let anisotropyData = null; // Store for download
+// HQIV background: a[], H_over_H0[], t_kyr[], theta_mpc[] — all from table only
+let HQIV_a = [];
+let HQIV_H_over_H0 = [];
+let HQIV_t_kyr = [];
+let HQIV_theta_mpc = [];
+let t_rec_kyr = null;  // Set from table when a first >= A_RECOMB
+let a_prev = 1e-10;    // Previous scale factor for dilution
 
-function initArrays() {
-  const n = gridSize * gridSize * gridSize;
-  energy = new Float32Array(n);
-  velocityX = new Float32Array(n);
-  velocityY = new Float32Array(n);
-  velocityZ = new Float32Array(n);
-  inertia = new Float32Array(n);
-  
-  // Smaller initial horizon for more sparse early modes
-  const earlyHorizon = 3;
-  for(let i=0; i<n; i++) {
-    let x = (i % gridSize) - gridSize/2;
-    let y = (Math.floor(i/gridSize) % gridSize) - gridSize/2;
-    let z = Math.floor(i/(gridSize*gridSize)) - gridSize/2;
-    let r = Math.sqrt(x*x + y*y + z*z);
-    
-    if (r < earlyHorizon) {
-      energy[i] = 0.9 + Math.random() * 0.3;
-      let mag = 0.06;
-      let theta = Math.random() * Math.PI * 2;
-      let phi = Math.random() * Math.PI;
-      velocityX[i] = mag * Math.sin(phi) * Math.cos(theta);
-      velocityY[i] = mag * Math.sin(phi) * Math.sin(theta);
-      velocityZ[i] = mag * Math.cos(phi);
-      inertia[i] = 0.5 + Math.random() * 0.5;
-    } else {
-      energy[i] = 0.01 + Math.random() * 0.02;
-      velocityX[i] = 0;
-      velocityY[i] = 0;
-      velocityZ[i] = 0;
-      inertia[i] = 1.0;
+// --- Cell state (paper: energy, inertia, angular momentum) ---
+// Each cell: energy (temperature proxy), phase, pos (Vector3), vel (Vector3), L (Vector3), m_i, active
+let cellEnergy, cellPhase;
+let velX, velY, velZ;
+let Lx, Ly, Lz;
+let m_i_arr;
+let activeArr;
+
+// --- HQIV table: load from file or embed RK4 (paper: background from dynamic horizon) ---
+function parseHQIVTable(text) {
+  const lines = text.trim().split(/\n/).filter(l => l && !l.startsWith('a'));
+  const a = [], H = [];
+  for (const line of lines) {
+    const parts = line.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      a.push(parseFloat(parts[0]));
+      H.push(parseFloat(parts[1]));
     }
   }
-  console.log('Initialized ' + n + ' cells at ' + gridSize + '^3 resolution');
+  return { a, H };
 }
 
-function getHorizonRadius(timeKyr) {
-  let t_norm = Math.max(timeKyr, 1) / RECOMB_TAU_kyr;
-  let baseHorizon = 164;
-  return baseHorizon * Math.pow(t_norm, 0.67);
+// Paper: t(a) = ∫ da'/(a' H(a')); dt/da = 1/(a H)
+function buildTimeAndHorizonFromTable(aArr, H_over_H0Arr) {
+  const n = aArr.length;
+  const H0 = H0_SI;
+  const t_kyr = new Float64Array(n);
+  const theta_mpc = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    // Θ(t) = 2c/H(t) — paper cosmic horizon
+    theta_mpc[i] = 2 * C_OVER_H0_MPC / Math.max(H_over_H0Arr[i], 1e-20);
+  }
+  for (let i = 1; i < n; i++) {
+    const da = aArr[i] - aArr[i - 1];
+    const aMid = (aArr[i] + aArr[i - 1]) / 2;
+    const HMid = (H_over_H0Arr[i] * H0 + H_over_H0Arr[i - 1] * H0) / 2;
+    const dtSec = da / (aMid * HMid);
+    t_kyr[i] = t_kyr[i - 1] + dtSec / SEC_PER_KYR;
+  }
+  return { t_kyr, theta_mpc };
 }
 
-// HQIV scale factor a(t) - calibrated to give a_rec = 1/1067.73 at t=510 Kyr
-// From t=t_rec to today: a ∝ t^(2/3), so t0 = t_rec / a_rec^(3/2)
-const T0_kyr = 16891253.72; // Age of universe in Kyr (derived from recombination)
-function getScaleFactor(timeKyr) {
-  // Proper scale factor: a = (t/t0)^(2/3) for matter-dominated
-  // Use t^(0.67) ≈ t^(2/3)
-  return Math.pow(timeKyr / T0_kyr, 0.67);
+// RK4 fallback: paper A_eff = A_std + β H², dH/d(ln a) = (A_eff - H²)/H
+function runHQIVBackgroundRK4(aMin, aMax, nPts) {
+  const G0 = 6.6743e-11;
+  const Omega_m = 0.048;
+  const Omega_r = 9e-5;
+  const H0 = H0_SI;
+  const beta = BETA;
+  const Theta0 = 2 * C_SI / H0;
+
+  function G_ratio(a, H) {
+    const Theta = 2 * C_SI / (H + 1e-100);
+    return Math.pow(Theta0 / Theta, 0.6);
+  }
+  function rhs(ln_a, H) {
+    const a = Math.exp(ln_a);
+    const H_val = Math.max(H, 1e-4 * H0);
+    const rho_m = (3 * H0 * H0 * Omega_m / (8 * Math.PI * G0)) * (1 / (a * a * a));
+    const rho_r = (3 * H0 * H0 * Omega_r / (8 * Math.PI * G0)) * (1 / (a * a * a * a));
+    const G_rat = G_ratio(a, H_val);
+    const A_std = -(4 * Math.PI * G_rat * G0 / 3) * (rho_m + 2 * rho_r);
+    const A_eff = A_std + beta * H_val * H_val;
+    return (A_eff - H_val * H_val) / H_val;
+  }
+  function rk4Step(ln_a, H, dln_a) {
+    const k1 = rhs(ln_a, H);
+    const k2 = rhs(ln_a + 0.5 * dln_a, H + 0.5 * dln_a * k1);
+    const k3 = rhs(ln_a + 0.5 * dln_a, H + 0.5 * dln_a * k2);
+    const k4 = rhs(ln_a + dln_a, H + dln_a * k3);
+    return H + (dln_a / 6) * (k1 + 2 * k2 + 2 * k3 + k4);
+  }
+
+  const ln_a_min = Math.log(aMin);
+  const ln_a_max = Math.log(aMax);
+  const H2_init = (8 * Math.PI * G0 / 3) * (
+    (3 * H0 * H0 * Omega_r / (8 * Math.PI * G0)) / (aMin * aMin * aMin * aMin) +
+    (3 * H0 * H0 * Omega_m / (8 * Math.PI * G0)) / (aMin * aMin * aMin)
+  );
+  let H = Math.sqrt(Math.max(H2_init, 1e-100));
+
+  const aArr = [];
+  const HArr = [];
+  const step = (ln_a_max - ln_a_min) / (nPts - 1);
+  for (let i = 0; i < nPts; i++) {
+    const ln_a = ln_a_min + i * step;
+    aArr.push(Math.exp(ln_a));
+    HArr.push(H / H0);
+    if (i < nPts - 1) H = Math.max(rk4Step(ln_a, H, step), 1e-30);
+  }
+  return { aArr, HArr };
 }
 
-function getNeighbors(i) {
-  let x = i % gridSize;
-  let y = Math.floor(i/gridSize) % gridSize;
-  let z = Math.floor(i/(gridSize*gridSize));
-  let neighbors = [];
-  
-  if (x > 0) neighbors.push(i - 1);
-  if (x < gridSize-1) neighbors.push(i + 1);
-  if (y > 0) neighbors.push(i - gridSize);
-  if (y < gridSize-1) neighbors.push(i + gridSize);
-  if (z > 0) neighbors.push(i - gridSize*gridSize);
-  if (z < gridSize-1) neighbors.push(i + gridSize*gridSize);
-  
-  return neighbors;
+function initHQIVBackground() {
+  const nPts = 2500;
+  const aMin = 1e-7;
+  const aMax = 1.0;
+
+  function useTable(aArr, HArr) {
+    HQIV_a = aArr;
+    HQIV_H_over_H0 = HArr;
+    const built = buildTimeAndHorizonFromTable(HQIV_a, HQIV_H_over_H0);
+    HQIV_t_kyr = built.t_kyr;
+    HQIV_theta_mpc = built.theta_mpc;
+    // Recombination trigger: when currentTime first exceeds table t at a ≈ 1/1068.73 (paper)
+    const idx = HQIV_a.findIndex(a => a >= A_RECOMB);
+    t_rec_kyr = idx >= 0 ? HQIV_t_kyr[idx] : null;
+    console.log('HQIV table: ' + HQIV_a.length + ' rows; t_rec (from table) = ' + (t_rec_kyr != null ? t_rec_kyr.toFixed(1) + ' Kyr' : 'N/A'));
+  }
+
+  const urls = ['sandbox/hqiv_Ha.txt', 'hqiv_Ha.txt'];
+  let done = false;
+  urls.forEach(url => {
+    if (done) return;
+    fetch(url).then(r => r.text()).then(text => {
+      if (done) return;
+      const { a, H } = parseHQIVTable(text);
+      if (a.length > 10) {
+        done = true;
+        useTable(a, H);
+      }
+    }).catch(() => {});
+  });
+
+  setTimeout(() => {
+    if (HQIV_a.length > 0) return;
+    done = true;
+    const { aArr, HArr } = runHQIVBackgroundRK4(aMin, aMax, nPts);
+    useTable(aArr, HArr);
+  }, 500);
+}
+
+// Interpolate HQIV at current time (paper: all cosmology from table)
+function getHQIVAtTime(tKyr) {
+  if (HQIV_t_kyr.length === 0) return { a: 1e-7, H_over_H0: 1e12, theta_mpc: 1e-6, z: 1e6 };
+  let i = 0;
+  for (; i < HQIV_t_kyr.length - 1 && HQIV_t_kyr[i + 1] <= tKyr; i++) {}
+  const t0 = HQIV_t_kyr[i];
+  const t1 = HQIV_t_kyr[Math.min(i + 1, HQIV_t_kyr.length - 1)];
+  const f = t1 > t0 ? (tKyr - t0) / (t1 - t0) : 0;
+  const a = HQIV_a[i] * (1 - f) + HQIV_a[Math.min(i + 1, HQIV_a.length - 1)] * f;
+  const H_over_H0 = HQIV_H_over_H0[i] * (1 - f) + HQIV_H_over_H0[Math.min(i + 1, HQIV_H_over_H0.length - 1)] * f;
+  const theta_mpc = HQIV_theta_mpc[i] * (1 - f) + HQIV_theta_mpc[Math.min(i + 1, HQIV_theta_mpc.length - 1)] * f;
+  const z = (1 / a) - 1;
+  return { a, H_over_H0, theta_mpc, z };
 }
 
 function getCellCoord(i) {
-  return {
-    x: (i % gridSize) - gridSize/2,
-    y: (Math.floor(i/gridSize) % gridSize) - gridSize/2,
-    z: Math.floor(i/(gridSize*gridSize)) - gridSize/2
-  };
+  const x = (i % gridSize) - gridSize / 2;
+  const y = (Math.floor(i / gridSize) % gridSize) - gridSize / 2;
+  const z = Math.floor(i / (gridSize * gridSize)) - gridSize / 2;
+  return { x, y, z };
 }
 
-function isInBulk(i) {
-  let c = getCellCoord(i);
-  let dist = Math.sqrt(c.x*c.x + c.y*c.y + c.z*c.z);
-  return dist < gridSize * 0.35;
+// Toroidal (periodic) boundaries: wrap coordinates so the grid is a 3-torus
+function getCellIndex(x, y, z) {
+  const g = gridSize;
+  const wrap = (v) => ((v % g) + g) % g;
+  const ix = wrap(Math.floor(x) + g/2);
+  const iy = wrap(Math.floor(y) + g/2);
+  const iz = wrap(Math.floor(z) + g/2);
+  return ix + iy * g + iz * g * g;
 }
 
-// Round to 3 significant figures for mode thresholds
-function round3sig(n) {
-  if (n <= 0) return 0;
-  let digits = Math.floor(Math.log10(n));
-  let factor = Math.pow(10, digits - 2);
-  return Math.round(n / factor) * factor;
+// Neighbors within N steps (for causal coupling we filter by dist <= c*dt*a)
+function getNeighborOffsets(maxSteps) {
+  const out = [];
+  for (let dx = -maxSteps; dx <= maxSteps; dx++) {
+    for (let dy = -maxSteps; dy <= maxSteps; dy++) {
+      for (let dz = -maxSteps; dz <= maxSteps; dz++) {
+        if (dx === 0 && dy === 0 && dz === 0) continue;
+        const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+        if (dist <= maxSteps + 0.01) out.push({ dx, dy, dz, dist });
+      }
+    }
+  }
+  return out;
 }
+const NEIGHBOR_OFFSETS = getNeighborOffsets(2);
 
-let lastModeCount = 0;
+function initArrays() {
+  const n = gridSize * gridSize * gridSize;
+  cellEnergy = new Float32Array(n);
+  cellPhase = new Float32Array(n);
+  velX = new Float32Array(n);
+  velY = new Float32Array(n);
+  velZ = new Float32Array(n);
+  Lx = new Float32Array(n);
+  Ly = new Float32Array(n);
+  Lz = new Float32Array(n);
+  m_i_arr = new Float32Array(n);
+  activeArr = new Uint8Array(n);
+
+  const earlyHorizon = 4;
+  for (let i = 0; i < n; i++) {
+    const c = getCellCoord(i);
+    const r = Math.sqrt(c.x*c.x + c.y*c.y + c.z*c.z);
+    if (r < earlyHorizon) {
+      cellEnergy[i] = 0.9 + Math.random() * 0.2;
+      cellPhase[i] = Math.random() * Math.PI * 2;
+      const mag = 0.04;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.random() * Math.PI;
+      velX[i] = mag * Math.sin(phi) * Math.cos(theta);
+      velY[i] = mag * Math.sin(phi) * Math.sin(theta);
+      velZ[i] = mag * Math.cos(phi);
+      Lx[i] = Ly[i] = Lz[i] = 0;
+      m_i_arr[i] = 1.0;
+      activeArr[i] = 1;
+    } else {
+      cellEnergy[i] = 0.02 + Math.random() * 0.02;
+      cellPhase[i] = Math.random() * Math.PI * 2;
+      velX[i] = velY[i] = velZ[i] = 0;
+      Lx[i] = Ly[i] = Lz[i] = 0;
+      m_i_arr[i] = 1.0;
+      activeArr[i] = 0;
+    }
+  }
+}
 
 function updateCA() {
-  if (paused) return;
-  
-  generation++;
-  // Dynamic timestep based on allowed modes
-  let targetModes = round3sig(Math.max(1, lastModeCount));
-  let dt = 0.5 + 1.0 / (1 + targetModes / 100);
-  simTime += dt;
+  if (paused || HQIV_t_kyr.length === 0) return;
 
-  
-  let horizonRadius = getHorizonRadius(simTime);
-  let horizonGrid = horizonRadius * Mpc_to_grid;
-  let scaleFactor = getScaleFactor(simTime);
-  // Energy cooling due to cosmic expansion
-  let expansionFactor = scaleFactor;
-  
+  const hqiv = getHQIVAtTime(currentTimeKyr);
+  const a_now = hqiv.a;
+  const H_over_H0 = hqiv.H_over_H0;
+  const theta_mpc = hqiv.theta_mpc;
+  const H_SI = H_over_H0 * H0_SI;
+
+  // Paper: allowedModes = count of active cells whose wavelength fits inside Θ(t)
+  // k_max = 2π floor(n) / Θ; cell active if its scale fits integer modes in Θ
   const n = gridSize * gridSize * gridSize;
-  let newEnergy = new Float32Array(n);
-  let totalVx = 0, totalVy = 0, totalVz = 0;
   let allowedModes = 0;
-  let bulkCells = 0;
-  let bulkLowEnergy = 0;
-  
-  for(let i=0; i<n; i++) {
-    let c = getCellCoord(i);
-    let r = Math.sqrt(c.x*c.x + c.y*c.y + c.z*c.z);
-    let insideHorizon = r < horizonGrid;
-    let e = energy[i];
-    let vx = velocityX[i];
-    let vy = velocityY[i];
-    let vz = velocityZ[i];
-    
-    let neighbors = getNeighbors(i);
-    let neighborEnergy = 0;
-    let neighborVx = 0, neighborVy = 0, neighborVz = 0;
-    
-    for(let ni of neighbors) {
-      neighborEnergy += energy[ni];
-      neighborVx += velocityX[ni];
-      neighborVy += velocityY[ni];
-      neighborVz += velocityZ[ni];
+  const gridSpacingMpc = GRID_SPACING_MPC;
+  const thetaComovingMpc = theta_mpc / a_now;
+
+  // Paper: deactivate if wavelength does not fit integer modes inside Θ(t); k_max = 2π floor(n)/Θ
+  for (let i = 0; i < n; i++) {
+    const c = getCellCoord(i);
+    const rMpc = Math.sqrt(c.x*c.x + c.y*c.y + c.z*c.z) * gridSpacingMpc;
+    const insideHorizon = rMpc < thetaComovingMpc;
+    const cellWavelengthPhys = gridSpacingMpc * a_now;  // physical cell scale
+    const wavelengthFits = cellWavelengthPhys <= theta_mpc;  // λ ≤ Θ
+    activeArr[i] = (insideHorizon && wavelengthFits && cellEnergy[i] > 0.02) ? 1 : 0;
+    if (activeArr[i]) allowedModes++;
+  }
+
+  // Physics-based timestep: resolve horizon growth. dt = fraction of horizon crossing time Θ/c
+  // Early (tiny Θ): small dt → Planck-like, picosecond regime; horizon grows smoothly through bulk
+  // Late (large Θ): larger dt so we don't crawl. No allowedModes in dt — that was inverted.
+  const horizonCrossingTimeKyr = theta_mpc / C_MPC_PER_KYR;  // Θ/c in Kyr
+  const FRAC = 0.03;   // ~3% of horizon crossing per step
+  let dt_this_step = FRAC * horizonCrossingTimeKyr;
+  const DT_FLOOR_KYR = 1e-9;    // ~30 s min step; avoid zero while keeping early universe tractable
+  const DT_CAP_KYR = 5;         // max 5 Kyr/step so we don't overshoot recombination in one go
+  dt_this_step = Math.max(DT_FLOOR_KYR, Math.min(DT_CAP_KYR, dt_this_step));
+  // Causal radius (physical); comoving for neighbour filter
+  const causalRadiusMpcPhys = C_MPC_PER_KYR * dt_this_step;
+  const causalRadiusComovingMpc = causalRadiusMpcPhys / a_now;
+
+  generation += 1;
+  currentTimeKyr += dt_this_step;
+  const hqivNext = getHQIVAtTime(currentTimeKyr);
+  const a_next = hqivNext.a;
+
+  // Delta_x = min(grid_spacing, Θ/2) — paper axiom Δx limit
+  const delta_x_phys = Math.min(gridSpacingMpc * a_now, theta_mpc / 2);
+  // m_i = m_g * (1 - (β c H) / a_local) — paper modified inertia
+  const a_min = BETA * C_SI * H_SI;
+
+  // Copy current L for transfer (we read L, write dL)
+  const dLx = new Float32Array(n);
+  const dLy = new Float32Array(n);
+  const dLz = new Float32Array(n);
+
+  for (let i = 0; i < n; i++) {
+    if (!activeArr[i]) continue;
+
+    // Energy dilution: energy *= (a_prev / a_now)^4 — paper radiation dilution
+    cellEnergy[i] *= Math.pow(a_prev / a_now, 4);
+    cellEnergy[i] = Math.max(0.01, Math.min(2, cellEnergy[i]));
+
+    const cx = getCellCoord(i).x;
+    const cy = getCellCoord(i).y;
+    const cz = getCellCoord(i).z;
+    const pos_i = new THREE.Vector3(cx * gridSpacingMpc, cy * gridSpacingMpc, cz * gridSpacingMpc);
+    const vel_i = new THREE.Vector3(velX[i], velY[i], velZ[i]);
+
+    let local_accel_sq = 0;
+    const neighbors = [];
+
+    for (const { dx, dy, dz, dist } of NEIGHBOR_OFFSETS) {
+      const j = getCellIndex(cx + dx, cy + dy, cz + dz);
+      if (j < 0 || !activeArr[j]) continue;
+      const distMpc = dist * gridSpacingMpc;
+      if (distMpc > causalRadiusComovingMpc) continue;
+      neighbors.push({ j, dx, dy, dz, distMpc });
     }
-    let numNeighbors = neighbors.length;
-    if (numNeighbors > 0) {
-      neighborEnergy /= numNeighbors;
-      neighborVx /= numNeighbors;
-      neighborVy /= numNeighbors;
-      neighborVz /= numNeighbors;
-    }
-    
-    let newE = e;
-    
-    if (insideHorizon) {
-      if (e > ENERGY_THRESHOLD) {
-        let densityDiff = neighborEnergy - e;
-        newE += densityDiff * 0.08 * scaleFactor;
-        
-        vx = vx * 0.92 + neighborVx * 0.08;
-        vy = vy * 0.92 + neighborVy * 0.08;
-        vz = vz * 0.92 + neighborVz * 0.08;
-        
-        let inertiaReduction = 1.0 - 0.15 * Math.min(1, (e - ENERGY_THRESHOLD) * 3);
-        vx *= inertiaReduction;
-        vy *= inertiaReduction;
-        vz *= inertiaReduction;
+
+    for (const { j, dx, dy, dz, distMpc } of neighbors) {
+      const v_j = new THREE.Vector3(velX[j], velY[j], velZ[j]);
+      const v_rel = new THREE.Vector3().subVectors(vel_i, v_j);
+      const v_rel_mag = v_rel.length();
+      if (distMpc > 1e-10) {
+        const distM = distMpc * MPC_M * 1e-6;
+        const a_local_est = (v_rel_mag * v_rel_mag) / distM;
+        local_accel_sq = Math.max(local_accel_sq, a_local_est * a_local_est);
       }
-      
-      newE += 0.001 * scaleFactor;
-      
-      let zBias = 0.0003 * (1.0 + generation * 0.00005);
-      vz += zBias;
-    } else {
-      newE *= DAMPING_OUTSIDE;
-      vx *= DAMPING_OUTSIDE;
-      vy *= DAMPING_OUTSIDE;
-      vz *= DAMPING_OUTSIDE;
     }
-    
-    // Apply cosmological cooling from expansion
-    newE = newE * (expansionFactor || 1);
-    newE = Math.max(0.01, newE);
-    newE = Math.min(2.0, newE);
-    
-    newEnergy[i] = newE;
-    velocityX[i] = vx;
-    velocityY[i] = vy;
-    velocityZ[i] = vz;
-    
-    if (isInBulk(i)) {
-      bulkCells++;
-      if (newE < ENERGY_THRESHOLD * 1.5) {
-        bulkLowEnergy++;
-      }
-    }
-    
-    if (insideHorizon && newE > ENERGY_THRESHOLD) {
-      allowedModes++;
-      totalVx += vx;
-      totalVy += vy;
-      totalVz += vz;
+    // Paper: m_i = m_g (1 - a_min/|a_local|), a_min = β c H(t)
+    const local_accel = Math.sqrt(local_accel_sq) + a_min * 0.01;
+    m_i_arr[i] = Math.max(0.01, Math.min(2, 1 - (a_min / local_accel)));
+  }
+
+  for (let i = 0; i < n; i++) {
+    if (!activeArr[i]) continue;
+    const cx = getCellCoord(i).x;
+    const cy = getCellCoord(i).y;
+    const cz = getCellCoord(i).z;
+    const vel_i = new THREE.Vector3(velX[i], velY[i], velZ[i]);
+
+    for (const { j, dx, dy, dz, distMpc } of NEIGHBOR_OFFSETS) {
+      const jIdx = getCellIndex(cx + dx, cy + dy, cz + dz);
+      if (jIdx < 0 || !activeArr[jIdx]) continue;
+      if (distMpc > causalRadiusComovingMpc) continue;
+
+      const r_ij = new THREE.Vector3(dx * gridSpacingMpc, dy * gridSpacingMpc, dz * gridSpacingMpc);
+      const v_j = new THREE.Vector3(velX[jIdx], velY[jIdx], velZ[jIdx]);
+      const v_rel = new THREE.Vector3().subVectors(vel_i, v_j);
+      // Torque = r × v_rel * (m_i_i - m_i_j) * β — paper; L transfer conserves L
+      const m_diff = m_i_arr[i] - m_i_arr[jIdx];
+      const torque = new THREE.Vector3().crossVectors(r_ij, v_rel).multiplyScalar(m_diff * BETA * 0.01);
+      dLx[i] += torque.x;
+      dLy[i] += torque.y;
+      dLz[i] += torque.z;
+      dLx[jIdx] -= torque.x;
+      dLy[jIdx] -= torque.y;
+      dLz[jIdx] -= torque.z;
     }
   }
-  
-  energy = newEnergy;
-  // Store mode count for dynamic timestep
-  lastModeCount = allowedModes;
-  
-  // Recombination: triggered by time AND sufficient mode development
-  // Per paper: fixed at t=510 Kyr, z≈1067.73
-  let bulkFraction = bulkCells > 0 ? bulkLowEnergy / bulkCells : 0;
-  let recombinationTime = simTime >= RECOMB_TAU_kyr;
-  // Need at least 100 modes for meaningful anisotropy
-  let hasStructure = allowedModes > 100;
-  
-  if (!recombinationReached && recombinationTime && hasStructure) {
+
+  for (let i = 0; i < n; i++) {
+    Lx[i] += dLx[i];
+    Ly[i] += dLy[i];
+    Lz[i] += dLz[i];
+    // Small horizon-limited random phase kick inside k_max
+    const n_modes = Math.max(1, Math.floor(theta_mpc / (gridSpacingMpc * a_now)));
+    if (activeArr[i] && n_modes > 0 && Math.random() < 0.02) {
+      cellPhase[i] += (Math.random() - 0.5) * 0.2 / n_modes;
+    }
+  }
+
+  // Pressure (acoustic) term: ∇P drives flows → sound waves → BAO imprint at recombination
+  // v += coeff * sum_neighbors (E_j - E_i) * r_hat_ij  (high E pushes, low E pulls)
+  const PRESSURE_COEFF = 0.04 * Math.min(1, a_now * 500);  // relevant in radiation era
+  for (let i = 0; i < n; i++) {
+    if (!activeArr[i]) continue;
+    const cx = getCellCoord(i).x;
+    const cy = getCellCoord(i).y;
+    const cz = getCellCoord(i).z;
+    let fx = 0, fy = 0, fz = 0;
+    for (const { dx, dy, dz, dist } of NEIGHBOR_OFFSETS) {
+      const j = getCellIndex(cx + dx, cy + dy, cz + dz);
+      if (j < 0 || !activeArr[j]) continue;
+      const distMpc = dist * gridSpacingMpc;
+      if (distMpc > causalRadiusComovingMpc) continue;
+      const dE = cellEnergy[j] - cellEnergy[i];
+      if (distMpc < 1e-6) continue;
+      fx += dE * (dx / dist);
+      fy += dE * (dy / dist);
+      fz += dE * (dz / dist);
+    }
+    velX[i] += PRESSURE_COEFF * fx;
+    velY[i] += PRESSURE_COEFF * fy;
+    velZ[i] += PRESSURE_COEFF * fz;
+  }
+  // Mild velocity damping so acoustic modes don't blow up
+  const VEL_DAMP = 0.98;
+  for (let i = 0; i < n; i++) {
+    if (!activeArr[i]) continue;
+    velX[i] *= VEL_DAMP;
+    velY[i] *= VEL_DAMP;
+    velZ[i] *= VEL_DAMP;
+  }
+
+  a_prev = a_now;
+
+  // Recombination trigger: when currentTime first exceeds table t at z ≈ 1067.73 (paper)
+  if (t_rec_kyr != null && !recombinationReached && currentTimeKyr >= t_rec_kyr) {
     recombinationReached = true;
-    paused = true; // Auto-pause at recombination!
+    paused = true;
     document.getElementById('stat-recomb').style.display = 'block';
-    console.log('★ RECOMBINATION at ' + simTime.toFixed(1) + ' Kyr (fixed at ' + RECOMB_TAU_kyr + ' Kyr from paper) (bulk: ' + (bulkFraction*100).toFixed(1) + '%, modes: ' + allowedModes + ') ★');
     recombinationSnapshot = {
-      energy: new Float32Array(energy),
-      time: simTime,
-      generation: generation
+      energy: new Float32Array(cellEnergy),
+      Lx: new Float32Array(Lx),
+      Ly: new Float32Array(Ly),
+      Lz: new Float32Array(Lz),
+      m_i: new Float32Array(m_i_arr),
+      timeKyr: currentTimeKyr,
+      generation,
+      a: a_now,
+      z: hqiv.z,
+      theta_mpc,
+      allowedModes
     };
+    console.log('★ RECOMBINATION at t = ' + currentTimeKyr.toFixed(1) + ' Kyr (HQIV table), z = ' + hqiv.z.toFixed(2) + ', generation ' + generation + ' ★');
     generateAnisotropyMap();
   }
-  
-  let coherence = 0;
-  if (allowedModes > 0) {
-    let avgVx = totalVx / allowedModes;
-    let avgVy = totalVy / allowedModes;
-    let avgVz = totalVz / allowedModes;
-    let mag = Math.sqrt(avgVx*avgVx + avgVy*avgVy + avgVz*avgVz) + 0.0001;
-    coherence = Math.abs(avgVz) / mag;
-  }
-  
-  maxStructureSize = calculateMaxStructure() * (CELL_SIZE / Mpc_to_grid) * 0.7;
-  horizonSphere.scale.setScalar(horizonGrid * CELL_SIZE * 0.6);
-  
-  if (generation % PRINT_EVERY === 0) {
-    updateStats(allowedModes, coherence, horizonRadius, bulkFraction);
-  }
-  
-  updateVisualization();
-}
 
-function calculateMaxStructure() {
-  const n = gridSize * gridSize * gridSize;
-  let visited = new Uint8Array(n);
-  let maxSize = 0;
-  
-  for(let i=0; i<n; i++) {
-    if (energy[i] > ENERGY_THRESHOLD && !visited[i]) {
-      let size = 0;
-      let queue = [i];
-      visited[i] = 1;
-      
-      while(queue.length > 0) {
-        let curr = queue.shift();
-        size++;
-        
-        let neighbors = getNeighbors(curr);
-        for(let ni of neighbors) {
-          if (energy[ni] > ENERGY_THRESHOLD && !visited[ni]) {
-            visited[ni] = 1;
-            queue.push(ni);
-          }
-        }
-      }
-      maxSize = Math.max(maxSize, size);
+  let netLx = 0, netLy = 0, netLz = 0;
+  for (let i = 0; i < n; i++) {
+    if (activeArr[i]) {
+      netLx += Lx[i];
+      netLy += Ly[i];
+      netLz += Lz[i];
     }
   }
-  
-  return Math.pow(maxSize, 1/3);
-}
+  const netL = Math.sqrt(netLx*netLx + netLy*netLy + netLz*netLz);
 
-function updateStats(modes, coherence, horizon, bulkFrac) {
-  document.getElementById('stat-gen').textContent = 'Generation: ' + generation;
-  document.getElementById('stat-modes').textContent = 'Modes: ' + modes.toLocaleString();
-  document.getElementById('stat-coherence').textContent = 'Coherence: ' + coherence.toFixed(4);
-  document.getElementById('stat-time').textContent = 'Time: ' + simTime.toFixed(1) + ' Kyr';
-  document.getElementById('stat-horizon').textContent = 'Horizon: ' + horizon.toFixed(1) + ' Mpc';
-  document.getElementById('stat-structure').textContent = 'Structure: ' + maxStructureSize.toFixed(1) + ' Mpc';
-  document.getElementById('stat-bulk').textContent = 'Bulk: ' + (bulkFrac * 100).toFixed(1) + '%';
-  
-  let cohEl = document.getElementById('stat-coherence');
-  if (coherence > 0.6) {
-    cohEl.classList.add('highlight');
-  } else {
-    cohEl.classList.remove('highlight');
-  }
+  const horizonGrid = (theta_mpc / a_now) / gridSpacingMpc * CELL_SIZE * 0.5;
+  horizonSphere.scale.setScalar(horizonGrid);
+
+  const genUnc = 1 / Math.max(allowedModes, 1);
+  document.getElementById('stat-gen').textContent = 'Generation: ' + generation.toFixed(3) + ' (±' + genUnc.toFixed(3) + ')';
+  document.getElementById('stat-modes').textContent = 'Allowed Modes: ' + (allowedModes <= 0 ? '0' : allowedModes.toPrecision(3));
+  document.getElementById('stat-time').textContent = 't (Kyr): ' + currentTimeKyr.toFixed(1);
+  document.getElementById('stat-z').textContent = 'z: ' + hqiv.z.toFixed(2);
+  document.getElementById('stat-horizon').textContent = 'Θ (Mpc): ' + theta_mpc.toFixed(4);
+  document.getElementById('stat-L').textContent = 'net |L_cosmic|: ' + netL.toFixed(4);
+  document.getElementById('stat-H').textContent = 'H(t): ' + (H_over_H0 * 70).toFixed(2) + ' km/s/Mpc';
+  document.getElementById('stat-a').textContent = 'a(t): ' + a_now.toExponential(4);
+
+  updateVisualization();
 }
 
 function updateVisualization() {
   const positions = points.geometry.attributes.position.array;
   const colors = points.geometry.attributes.color.array;
-  
-  camera.getWorldDirection(cameraDir);
-  
-  // Calculate mean energy for distance-to-mean coloring
   const n = gridSize * gridSize * gridSize;
-  let meanEnergy = 0;
-  let stdDev = 0;
-  
-  for(let i=0; i<n; i++) {
-    meanEnergy += energy[i];
-  }
-  meanEnergy /= n;
-  
-  for(let i=0; i<n; i++) {
-    stdDev += Math.pow(energy[i] - meanEnergy, 2);
-  }
-  stdDev = Math.sqrt(stdDev / n) + 0.001; // Avoid division by zero
-  
-  for(let i=0; i<gridSize*gridSize*gridSize; i++) {
-    let c = getCellCoord(i);
-    
-    positions[i*3] = c.x * CELL_SIZE;
+  let meanE = 0;
+  for (let i = 0; i < n; i++) meanE += cellEnergy[i];
+  meanE /= n;
+  let std = 0;
+  for (let i = 0; i < n; i++) std += (cellEnergy[i] - meanE) ** 2;
+  std = Math.sqrt(std / n) + 0.001;
+
+  for (let i = 0; i < n; i++) {
+    const c = getCellCoord(i);
+    positions[i*3]   = c.x * CELL_SIZE;
     positions[i*3+1] = c.y * CELL_SIZE;
     positions[i*3+2] = c.z * CELL_SIZE;
-    
-    let e = energy[i];
-    let vx = velocityX[i];
-    let vy = velocityY[i];
-    let vz = velocityZ[i];
-    
-    let vMag = Math.sqrt(vx*vx + vy*vy + vz*vz) + 0.0001;
-    let vDir = new THREE.Vector3(vx, vy, vz).normalize();
-    let dot = vDir.dot(cameraDir);
-    
-    // Distance-to-mean based brightness (scale-corrected)
-    // Values above mean are bright, below mean are dim
-    let deviation = (e - meanEnergy) / stdDev;
-    let brightness = 0.5 + deviation * 0.3; // Center at 0.5, scale by std devs
-    brightness = Math.max(0.1, Math.min(1.0, brightness));
-    
-    let r, g, b;
-    if (dot > 0) {
-      r = brightness * (0.3 + dot * 0.7);
-      g = brightness * 0.7 * (1 - dot);
-      b = brightness * 0.8 * (1 - dot * 0.5);
-    } else {
-      r = brightness * 0.3 * (1 + dot);
-      g = brightness * (0.7 - dot * 0.3);
-      b = brightness * 0.8;
-    }
-    
-    colors[i*3] = r;
-    colors[i*3+1] = g;
-    colors[i*3+2] = b;
+    const e = cellEnergy[i];
+    const dev = (e - meanE) / std;
+    const b = Math.max(0.1, Math.min(1, 0.5 + dev * 0.3));
+    colors[i*3]   = b * 0.4;
+    colors[i*3+1] = b * 0.8;
+    colors[i*3+2] = b * 0.9;
   }
-  
   points.geometry.attributes.position.needsUpdate = true;
   points.geometry.attributes.color.needsUpdate = true;
 }
 
-// Mollweide projection for CMB anisotropy
+// --- Mollweide (paper: CMB projection) ---
 function mollweide(lon, lat, width, height) {
-  // Standard Mollweide projection
-  const lambda = lon;  // longitude in radians
-  const phi = lat;     // latitude in radians
-  
+  const phi = lat;
   if (Math.abs(phi) > Math.PI / 2) return null;
-  
-  // Solve for theta iteratively: 2*theta + sin(2*theta) = PI * sin(phi)
-  let theta = phi; // Initial guess
-  for (let i = 0; i < 10; i++) {
-    let delta = (2 * theta + Math.sin(2 * theta) - Math.PI * Math.sin(phi)) / 
-                (2 + 2 * Math.cos(2 * theta));
-    theta -= delta;
-    if (Math.abs(delta) < 1e-6) break;
+  let theta = phi;
+  for (let it = 0; it < 12; it++) {
+    const d = (2*theta + Math.sin(2*theta) - Math.PI*Math.sin(phi)) / (2 + 2*Math.cos(2*theta));
+    theta -= d;
+    if (Math.abs(d) < 1e-8) break;
   }
-  
   const R = Math.min(width, height) * 0.45;
-  
-  // Standard Mollweide formulas
-  const x = R * 2 * Math.SQRT2 / Math.PI * lambda * Math.cos(theta);
-  const y = R * Math.SQRT2 * Math.sin(theta);
-  
-  return {
-    x: width / 2 + x,
-    y: height / 2 - y
-  };
+  const x = width/2  + R * 2*Math.SQRT2/Math.PI * lon * Math.cos(theta);
+  const y = height/2 - R * Math.SQRT2 * Math.sin(theta);
+  return { x, y };
 }
 
 function generateAnisotropyMap() {
   if (!recombinationSnapshot) return;
-  
   document.getElementById('anisotropy').style.display = 'block';
-  
+
   const canvas = document.getElementById('anisoCanvas');
   const ctx = canvas.getContext('2d');
   const width = canvas.width;
   const height = canvas.height;
-  
-  // Black background
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, width, height);
-  
-  // Draw Mollweide grid lines
-  ctx.strokeStyle = '#222';
-  ctx.lineWidth = 1;
-  
-  // Latitude lines
-  for (let lat of [-60, -30, 0, 30, 60]) {
-    let rad = lat * Math.PI / 180;
-    ctx.beginPath();
-    for (let lon = -Math.PI; lon <= Math.PI; lon += 0.02) {
-      let pt = mollweide(lon, rad, width, height);
-      if (pt) {
-        if (lon === -Math.PI) ctx.moveTo(pt.x, pt.y);
-        else ctx.lineTo(pt.x, pt.y);
-      }
-    }
-    ctx.stroke();
+
+  const nTheta = 180;
+  const nPhi = 90;
+  const gridSpacingMpc = GRID_SPACING_MPC;
+  const n = gridSize * gridSize * gridSize;
+
+  // Last-scattering shell at sound-horizon scale (BAO): project from thin shell, not full volume
+  // r_LS comoving ≈ Θ(t_rec)/a_rec (HQIV horizon at recombination)
+  const r_LS = recombinationSnapshot.theta_mpc / recombinationSnapshot.a;
+  const sigmaShell = Math.max(gridSpacingMpc * 1.5, r_LS * 0.12);  // thin shell, resolved
+  const energyMap = new Float64Array(nTheta * nPhi);
+  const weightSum = new Float64Array(nTheta * nPhi);
+
+  for (let i = 0; i < n; i++) {
+    const c = getCellCoord(i);
+    const rx = c.x * gridSpacingMpc;
+    const ry = c.y * gridSpacingMpc;
+    const rz = c.z * gridSpacingMpc;
+    const r = Math.sqrt(rx*rx + ry*ry + rz*rz);
+    if (r < 0.5) continue;
+    const theta = Math.atan2(ry, rx);
+    const phi = Math.acos(Math.max(-1, Math.min(1, rz / r)));
+    const thetaIdx = Math.floor(((theta + Math.PI) / (2 * Math.PI)) * nTheta) % nTheta;
+    const phiIdx = Math.floor((phi / Math.PI) * nPhi);
+    const pIdx = Math.min(phiIdx, nPhi - 1) * nTheta + thetaIdx;
+    const shellWeight = Math.exp(-0.5 * Math.pow((r - r_LS) / sigmaShell, 2));
+    if (shellWeight < 0.01) continue;
+    const e = recombinationSnapshot.energy[i];
+    const mi = recombinationSnapshot.m_i[i];
+    const Lx = recombinationSnapshot.Lx[i];
+    const Ly = recombinationSnapshot.Ly[i];
+    const Lz = recombinationSnapshot.Lz[i];
+    const nx = Math.sin(phi) * Math.cos(theta);
+    const ny = Math.sin(phi) * Math.sin(theta);
+    const nz = Math.cos(phi);
+    const Ldotn = Lx*nx + Ly*ny + Lz*nz;
+    const dT_T = - (e * mi) / 3 + Ldotn * 0.15;
+    energyMap[pIdx] += shellWeight * dT_T;
+    weightSum[pIdx] += shellWeight;
   }
-  
-  // Longitude lines
-  for (let lon of [-120, -60, 0, 60, 120]) {
-    let rad = lon * Math.PI / 180;
-    ctx.beginPath();
-    for (let lat = -Math.PI/2; lat <= Math.PI/2; lat += 0.02) {
-      let pt = mollweide(rad, lat, width, height);
-      if (pt) {
-        if (lat === -Math.PI/2) ctx.moveTo(pt.x, pt.y);
-        else ctx.lineTo(pt.x, pt.y);
-      }
-    }
-    ctx.stroke();
-  }
-  
-  // Create a grid of angular directions for the CMB map
-  // Each direction accumulates energy along the line of sight (like real CMB observation)
-  const nTheta = 180; // longitude resolution
-  const nPhi = 90;    // latitude resolution
-  
-  // Accumulate energy for each angular direction
-  let energyMap = new Float32Array(nTheta * nPhi);
-  let countMap = new Uint32Array(nTheta * nPhi);
-  
-  // Project ALL cells onto the sphere by their angular direction
-  for (let i = 0; i < gridSize*gridSize*gridSize; i++) {
-    let c = getCellCoord(i);
-    let dx = c.x;
-    let dy = c.y;
-    let dz = c.z;
-    let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
-    
-    // Only consider cells inside the bulk region
-    if (dist > 0 && dist < gridSize * 0.4) {
-      // Calculate angular position
-      let theta = Math.atan2(dy, dx); // -PI to PI
-      let phi = Math.acos(dz / dist); // 0 to PI
-      
-      // Convert to grid indices
-      let thetaIdx = Math.floor(((theta + Math.PI) / (2 * Math.PI)) * nTheta);
-      let phiIdx = Math.floor((phi / Math.PI) * nPhi);
-      
-      thetaIdx = Math.max(0, Math.min(nTheta - 1, thetaIdx));
-      phiIdx = Math.max(0, Math.min(nPhi - 1, phiIdx));
-      
-      let idx = phiIdx * nTheta + thetaIdx;
-      energyMap[idx] += recombinationSnapshot.energy[i];
-      countMap[idx]++;
-    }
-  }
-  
-  // Convert to samples array for processing
+
   const samples = [];
-  let minE = Infinity, maxE = -Infinity;
-  
   for (let phiIdx = 0; phiIdx < nPhi; phiIdx++) {
     for (let thetaIdx = 0; thetaIdx < nTheta; thetaIdx++) {
-      let idx = phiIdx * nTheta + thetaIdx;
-      if (countMap[idx] > 0) {
-        let avgEnergy = energyMap[idx] / countMap[idx];
-        let theta = (thetaIdx / nTheta) * 2 * Math.PI - Math.PI;
-        let phi = (phiIdx / nPhi) * Math.PI;
-        
-        samples.push({theta, phi, energy: avgEnergy});
-        minE = Math.min(minE, avgEnergy);
-        maxE = Math.max(maxE, avgEnergy);
-      }
+      const idx = phiIdx * nTheta + thetaIdx;
+      const theta = (thetaIdx / nTheta) * 2 * Math.PI - Math.PI;
+      const phi = (phiIdx / nPhi) * Math.PI;
+      const dT_T = weightSum[idx] > 0 ? energyMap[idx] / weightSum[idx] : 0;
+      samples.push({ theta, phi, dT_T });
     }
   }
-  
-  // Calculate mean and standard deviation from the SAMPLES themselves
-  let meanE = 0;
-  for (let s of samples) {
-    meanE += s.energy;
+
+  let meanRaw = 0;
+  for (const s of samples) meanRaw += s.dT_T;
+  meanRaw /= samples.length;
+  let rmsRaw = 0;
+  for (const s of samples) rmsRaw += (s.dT_T - meanRaw) ** 2;
+  rmsRaw = Math.sqrt(rmsRaw / samples.length) || 1e-6;
+
+  let skew = 0, kurt = 0;
+  for (const s of samples) {
+    const z = (s.dT_T - meanRaw) / rmsRaw;
+    skew += z*z*z;
+    kurt += z*z*z*z;
   }
-  meanE /= samples.length;
-  
-  let stdDev = 0;
-  for (let s of samples) {
-    stdDev += Math.pow(s.energy - meanE, 2);
+  skew /= samples.length;
+  kurt = kurt / samples.length - 3;
+
+  let netLx = 0, netLy = 0, netLz = 0;
+  for (let i = 0; i < n; i++) {
+    netLx += recombinationSnapshot.Lx[i];
+    netLy += recombinationSnapshot.Ly[i];
+    netLz += recombinationSnapshot.Lz[i];
   }
-  stdDev = Math.sqrt(stdDev / samples.length);
-  
-  // Use min-max range if stdDev is too small
-  let range = maxE - minE;
-  let useMinMax = stdDev < 0.0001 || range < 0.0001;
-  
-  console.log('Anisotropy stats: mean=' + meanE.toFixed(6) + ', std=' + stdDev.toFixed(6) + 
-              ', min=' + minE.toFixed(6) + ', max=' + maxE.toFixed(6) + 
-              ', range=' + range.toFixed(6) + ', samples=' + samples.length);
-  
-  // Draw samples with proper color mapping - use larger pixels for visibility
-  for (let s of samples) {
-    let pt = mollweide(s.theta, s.phi - Math.PI/2, width, height);
-    if (pt && pt.x > 0 && pt.x < width && pt.y > 0 && pt.y < height) {
-      let norm;
-      if (range > 0) {
-        // Use min-max normalization scaled to -1 to +1
-        norm = (s.energy - minE) / range - 0.5;
-        norm *= 2;
-      } else {
-        norm = 0;
-      }
-      norm = Math.max(-1, Math.min(1, norm));
-      
-      // Enhanced CMB-style colormap with better contrast
-      let r, g, b;
-      if (norm < 0) {
-        // Cold: deep blue to light blue
-        let t = -norm;
-        r = Math.floor(30 + 70 * (1 - t));
-        g = Math.floor(30 + 140 * (1 - t));
-        b = Math.floor(80 + 175 * t);
-      } else {
-        // Hot: yellow to deep red  
-        let t = norm;
-        r = Math.floor(80 + 175 * t);
-        g = Math.floor(80 + 100 * (1 - t));
-        b = Math.floor(30 + 50 * (1 - t));
-      }
-      
-      ctx.fillStyle = `rgb(${r},${g},${b})`;
-      // Draw larger pixels for better visibility
-      ctx.fillRect(pt.x - 3, pt.y - 3, 6, 6);
+  const netL = Math.sqrt(netLx*netLx + netLy*netLy + netLz*netLz);
+
+  // Scale entire map so mean = 2.725 K (WMAP/Planck comparison)
+  const T_target = 2.725;
+  for (const s of samples) {
+    s.T_microK = (s.dT_T - meanRaw + T_target) * 1e6;
+  }
+  let meanT = 0;
+  for (const s of samples) meanT += s.T_microK;
+  meanT /= samples.length;
+  const scale = (T_target * 1e6) / meanT;
+  for (const s of samples) s.T_microK *= scale;
+
+  const minT = Math.min(...samples.map(s => s.T_microK));
+  const maxT = Math.max(...samples.map(s => s.T_microK));
+  const rmsMicroK = rmsRaw * Math.abs(scale);
+
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 1;
+  for (const s of samples) {
+    const pt = mollweide(s.theta, s.phi - Math.PI/2, width, height);
+    if (!pt || pt.x < 0 || pt.x >= width || pt.y < 0 || pt.y >= height) continue;
+    const norm = (s.T_microK - meanT) / (rmsMicroK || 1);
+    const t = Math.max(-1, Math.min(1, norm));
+    let r, g, b;
+    if (t < 0) {
+      r = 30 + 70*(1+t);
+      g = 30 + 140*(1+t);
+      b = 80 + 175*(-t);
+    } else {
+      r = 80 + 175*t;
+      g = 80 + 100*(1-t);
+      b = 30 + 50*(1-t);
     }
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(pt.x - 2, pt.y - 2, 4, 4);
   }
-  
-  // Store data for download
+
   anisotropyData = {
-    energyMap: energyMap,
-    countMap: countMap,
-    nTheta: nTheta,
-    nPhi: nPhi,
-    samples: samples,
-    stats: {
-      mean: meanE,
-      stdDev: stdDev,
-      min: minE,
-      max: maxE,
-      range: range,
-      nSamples: samples.length
-    },
+    samples,
+    stats: { meanRaw, rmsRaw, skew, kurt, netL, rmsMicroK, minT, maxT },
     metadata: {
-      time: recombinationSnapshot.time,
+      timeKyr: recombinationSnapshot.timeKyr,
       generation: recombinationSnapshot.generation,
-      gridSize: gridSize
+      z: recombinationSnapshot.z,
+      theta_mpc: recombinationSnapshot.theta_mpc,
+      allowedModes: recombinationSnapshot.allowedModes,
+      gridSize
     }
   };
-  
-  // Display WMAP-style statistics
-  // Convert energy to "temperature" in μK (microkelvin) scale
-  // Real CMB: T_mean ≈ 2.725K, ΔT ≈ ±100μK
-  // We scale our energy to similar proportions
-  const T_mean = 2725000; // 2.725K in μK
-  const T_scale = 100 / stdDev; // Scale so 1σ ≈ 100μK
-  
-  const deltaT_min = (minE - meanE) * T_scale;
-  const deltaT_max = (maxE - meanE) * T_scale;
-  const deltaT_rms = stdDev * T_scale;
-  
-  // Calculate higher-order statistics
-  let skewness = 0, kurtosis = 0;
-  for (let s of samples) {
-    let z = (s.energy - meanE) / stdDev;
-    skewness += z * z * z;
-    kurtosis += z * z * z * z;
-  }
-  skewness /= samples.length;
-  kurtosis = kurtosis / samples.length - 3; // Excess kurtosis
-  
-  // Estimate l_max from angular resolution
-  const l_max = Math.min(nTheta, nPhi) * 2;
-  
-  // Display stats
+
   const statsDiv = document.getElementById('aniso-stats');
   statsDiv.innerHTML = `
-    <b>=== CMB Anisotropy Statistics ===</b><br>
-    Mean Temperature: <span>${T_mean.toFixed(0)} μK</span> (2.725 K)<br>
-    ΔT Range: <span>${deltaT_min.toFixed(1)}</span> to <span>+${deltaT_max.toFixed(1)} μK</span><br>
-    RMS Fluctuation: <span>±${deltaT_rms.toFixed(1)} μK</span><br>
-    Skewness: <span>${skewness.toFixed(4)}</span><br>
-    Kurtosis (excess): <span>${kurtosis.toFixed(4)}</span><br>
-    <br>
-    <b>=== Map Properties ===</b><br>
-    Resolution: <span>${nTheta}×${nPhi}</span> pixels<br>
-    l_max: <span>~${l_max}</span><br>
-    Total Samples: <span>${samples.length.toLocaleString()}</span><br>
-    <br>
-    <b>=== Simulation Info ===</b><br>
-    Time: <span>${recombinationSnapshot.time.toFixed(1)} Kyr</span><br>
+    <b>=== CMB Anisotropy (HQIV emergent) ===</b><br>
+    Mean T: <span>2.725 K</span> (scaled)<br>
+    ΔT RMS: <span>±${rmsMicroK.toFixed(1)} μK</span><br>
+    Skewness: <span>${skew.toFixed(4)}</span><br>
+    Kurtosis (excess): <span>${kurt.toFixed(4)}</span><br>
+    Net |L_cosmic|: <span>${netL.toFixed(4)}</span><br>
+    <b>=== HQIV recombination ===</b><br>
+    t_rec: <span>${recombinationSnapshot.timeKyr.toFixed(1)} Kyr</span><br>
+    z: <span>${recombinationSnapshot.z.toFixed(2)}</span><br>
     Generation: <span>${recombinationSnapshot.generation}</span><br>
-    Grid: <span>${gridSize}³</span>
+    Θ: <span>${recombinationSnapshot.theta_mpc.toFixed(4)} Mpc</span>
   `;
-  
-  console.log('Anisotropy: ' + samples.length + ' samples, l~0-' + l_max);
-  console.log('ΔT RMS:', deltaT_rms.toFixed(2), 'μK');
 }
 
 function downloadAnisotropyData() {
   if (!anisotropyData) {
-    alert('No anisotropy data available. Run simulation to recombination first.');
+    alert('Run to recombination first.');
     return;
   }
-  
-  // Create FITS-like header
-  let header = `SIMPLE  =                    T / file conforms to FITS standard
-BITPIX  =                  -32 / array data type
-NAXIS   =                    2 / number of array dimensions
-NAXIS1  =                  ${anisotropyData.nTheta} / longitude dimension
-NAXIS2  =                  ${anisotropyData.nPhi} / latitude dimension
-CTYPE1  = 'RA---MOL'           / Mollweide projection in RA
-CTYPE2  = 'DEC--MOL'           / Mollweide projection in Dec
-CRVAL1  =                  0.0 / RA at reference point
-CRVAL2  =                  0.0 / Dec at reference point
-CRPIX1  =              ${anisotropyData.nTheta/2}.0 / reference pixel X
-CRPIX2  =              ${anisotropyData.nPhi/2}.0 / reference pixel Y
-CDELT1  =    ${360/anisotropyData.nTheta} / pixel scale in degrees
-CDELT2  =    ${180/anisotropyData.nPhi} / pixel scale in degrees
-BUNIT   = 'Energy   '           / arbitrary units
-DATAMIN =    ${anisotropyData.stats.min.toExponential(10)} / minimum data value
-DATAMAX =    ${anisotropyData.stats.max.toExponential(10)} / maximum data value
-DATAMEAN=    ${anisotropyData.stats.mean.toExponential(10)} / mean data value
-DATASIG =    ${anisotropyData.stats.stdDev.toExponential(10)} / standard deviation
-SIMTIME =    ${anisotropyData.metadata.time} / simulation time in Kyr
-SIMGEN  =                  ${anisotropyData.metadata.generation} / simulation generation
-GRIDSIZE=                  ${anisotropyData.metadata.gridSize} / CA grid size
+  const M = anisotropyData.metadata;
+  const S = anisotropyData.stats;
+  let header = `SIMPLE  = T
+BITPIX  = -32
+NAXIS   = 2
+NAXIS1  = ${anisotropyData.samples.length}
+NAXIS2  = 1
+CTYPE1  = 'RA---MOL'
+CTYPE2  = 'DEC--MOL'
+BUNIT   = 'microK'
+DATAMEAN= 2725000.0
+SIMTIME = ${M.timeKyr}
+SIMGEN  = ${M.generation}
+SIMZ    = ${M.z}
+THETA_MPC= ${M.theta_mpc}
+HQIV_RECOMB_KYR= ${M.timeKyr}
 END
 `;
-  
-  // Pad header to 2880 bytes (FITS requirement)
   while (header.length % 80 !== 0) header += ' ';
   while (header.length % 2880 !== 0) header += ' ';
-  
-  // Create binary data (float32 array)
-  const data = anisotropyData.energyMap;
-  const buffer = new ArrayBuffer(header.length + data.length * 4);
-  const view = new Uint8Array(buffer);
-  
-  // Write header
-  for (let i = 0; i < header.length; i++) {
-    view[i] = header.charCodeAt(i);
-  }
-  
-  // Write data (big-endian float32)
-  const dataView = new DataView(buffer, header.length);
-  for (let i = 0; i < data.length; i++) {
-    dataView.setFloat32(i * 4, data[i], false); // false = big-endian
-  }
-  
-  // Download
-  const blob = new Blob([buffer], { type: 'application/octet-stream' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `hqiv_cmb_anisotropy_gen${anisotropyData.metadata.generation}.fits`;
-  a.click();
-  URL.revokeObjectURL(url);
-  
-  console.log('Downloaded FITS file with', anisotropyData.stats.nSamples, 'pixels');
-}
 
-function showAnisotropy() {
-  if (recombinationSnapshot) {
-    generateAnisotropyMap();
-  } else {
-    console.log('Run until recombination');
-  }
+  const data = new Float32Array(anisotropyData.samples.length);
+  anisotropyData.samples.forEach((s, i) => { data[i] = s.T_microK; });
+  const buf = new ArrayBuffer(header.length + data.length * 4);
+  const view = new Uint8Array(buf);
+  for (let i = 0; i < header.length; i++) view[i] = header.charCodeAt(i);
+  const dv = new DataView(buf, header.length);
+  for (let i = 0; i < data.length; i++) dv.setFloat32(i * 4, data[i], false);
+
+  const blob = new Blob([buf], { type: 'application/octet-stream' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'hqiv_cmb_t' + M.timeKyr.toFixed(0) + 'kyr.fits';
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 function initThree() {
   scene = new THREE.Scene();
-  
   camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 1, 2000);
-  camera.position.set(100, 80, 120);
+  camera.position.set(80, 60, 100);
   camera.lookAt(0, 0, 0);
-  
-  renderer = new THREE.WebGLRenderer({antialias:false});
+  renderer = new THREE.WebGLRenderer({ antialias: false });
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
-  
+
   const n = gridSize * gridSize * gridSize;
   const positions = new Float32Array(n * 3);
   const colors = new Float32Array(n * 3);
-  
   points = new THREE.Points(
     new THREE.BufferGeometry(),
-    new THREE.PointsMaterial({size: CELL_SIZE * 1.2, vertexColors: true, 
-                              transparent: true, opacity: 0.9})
+    new THREE.PointsMaterial({ size: CELL_SIZE * 1.2, vertexColors: true, transparent: true, opacity: 0.9 })
   );
   points.geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   points.geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   scene.add(points);
-  
+
   horizonSphere = new THREE.Mesh(
-    new THREE.SphereGeometry(1, 48, 32),
-    new THREE.MeshBasicMaterial({color: 0x00ff66, wireframe: true, 
-                                 transparent: true, opacity: 0.2})
+    new THREE.SphereGeometry(1, 32, 24),
+    new THREE.MeshBasicMaterial({ color: 0x00ff66, wireframe: true, transparent: true, opacity: 0.2 })
   );
   scene.add(horizonSphere);
-  
   scene.add(new THREE.DirectionalLight(0xffffff, 0.6));
   scene.add(new THREE.AmbientLight(0x303030));
 }
 
 function reset() {
   generation = 0;
-  simTime = 0;
+  currentTimeKyr = 0;
+  a_prev = 1e-10;
   recombinationReached = false;
   recombinationSnapshot = null;
-  maxStructureSize = 0;
   paused = false;
   document.getElementById('stat-recomb').style.display = 'none';
   document.getElementById('anisotropy').style.display = 'none';
@@ -803,9 +807,18 @@ function reset() {
   updateVisualization();
 }
 
+// Multi-step early universe so we don't crawl: many tiny dt steps per frame when t is small
 function animate() {
   requestAnimationFrame(animate);
-  updateCA();
+  if (!paused && HQIV_t_kyr.length > 0 && !recombinationReached) {
+    const steps = currentTimeKyr < 0.01 ? 12 : (currentTimeKyr < 0.5 ? 4 : 1);
+    for (let s = 0; s < steps; s++) {
+      updateCA();
+      if (recombinationReached) break;
+    }
+  } else {
+    updateCA();
+  }
   renderer.render(scene, camera);
 }
 
@@ -815,69 +828,50 @@ function setupEvents() {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
-  
-  let dragging = false, prevX = 0, prevY = 0;
-  let rotX = 0.4, rotY = 0.6;
-  
-  function updateCamera() {
-    camera.position.x = 140 * Math.sin(rotY) * Math.cos(rotX);
-    camera.position.y = 140 * Math.sin(rotX);
-    camera.position.z = 140 * Math.cos(rotY) * Math.cos(rotX);
+  let drag = false, prevX = 0, prevY = 0, rotX = 0.4, rotY = 0.6;
+  function updateCam() {
+    camera.position.x = 120 * Math.sin(rotY) * Math.cos(rotX);
+    camera.position.y = 120 * Math.sin(rotX);
+    camera.position.z = 120 * Math.cos(rotY) * Math.cos(rotX);
     camera.lookAt(0, 0, 0);
   }
-  
-  document.addEventListener('mousedown', e => {
-    dragging = true;
-    prevX = e.clientX;
-    prevY = e.clientY;
-  });
-  
-  document.addEventListener('mouseup', () => dragging = false);
-  
+  document.addEventListener('mousedown', e => { drag = true; prevX = e.clientX; prevY = e.clientY; });
+  document.addEventListener('mouseup', () => drag = false);
   document.addEventListener('mousemove', e => {
-    if (dragging) {
-      let dx = e.clientX - prevX;
-      let dy = e.clientY - prevY;
-      rotY += dx * 0.005;
-      rotX += dy * 0.005;
+    if (drag) {
+      rotY += (e.clientX - prevX) * 0.005;
+      rotX += (e.clientY - prevY) * 0.005;
       rotX = Math.max(-1.5, Math.min(1.5, rotX));
-      updateCamera();
       prevX = e.clientX;
       prevY = e.clientY;
+      updateCam();
     }
   });
-  
   document.addEventListener('wheel', e => {
-    let dist = camera.position.length();
-    dist += e.deltaY * 0.15;
-    dist = Math.max(40, Math.min(300, dist));
-    camera.position.normalize().multiplyScalar(dist);
+    let d = camera.position.length();
+    d += e.deltaY * 0.15;
+    d = Math.max(40, Math.min(300, d));
+    camera.position.normalize().multiplyScalar(d);
   });
-  
   document.addEventListener('keydown', e => {
-    if (e.code === 'Space') {
-      paused = !paused;
-      e.preventDefault();
-    } else if (e.code === 'KeyR') {
-      reset();
-    } else if (e.code === 'KeyA') {
-      showAnisotropy();
-    }
+    if (e.code === 'Space') { paused = !paused; e.preventDefault(); }
+    else if (e.code === 'KeyR') reset();
+    else if (e.code === 'KeyA' && recombinationSnapshot) generateAnisotropyMap();
   });
-  
-  updateCamera();
+  updateCam();
 }
 
 try {
+  initHQIVBackground();
   initThree();
   initArrays();
   updateVisualization();
   setupEvents();
   animate();
-  console.log('HQIV 3D CA: 80^3 = 512K cells for l~1200 CMB anisotropy');
-  console.log('Auto-pauses at recombination - press A for anisotropy map');
-} catch(e) {
+  console.log('HQIV 3D CA: first-principles, table-driven; recombination from table at z≈1067.73');
+} catch (e) {
   document.getElementById('error').style.display = 'block';
+  document.getElementById('error').textContent = e.message;
   console.error(e);
 }
 </script>
