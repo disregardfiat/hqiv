@@ -2,7 +2,7 @@
 
 Parameter-minimal cosmology derived from **Quantised Inertia** (McCulloch 2007–2026): zero dark energy, zero dark matter, horizon-driven late-time acceleration and faster early structure formation. Repo contains the arXiv-ready paper, sandbox numerics, and CLASS/HiCLASS integration scaffolding.
 
-**Reference:** *Horizon-Quantized Informational Vacuum (HQIV): A Parameter-Minimal Cosmology Derived from Quantised Inertia* — M. Grok (collaborative with S. 4.20), submitted 17 February 2026.
+[Zenodo Preprint: Horizon-Quantized Informational Vacuum (HQIV): A Covariant Baryon-Only Cosmological Framework from Quantised Inertia](https://zenodo.org/records/18717656)
 
 ---
 
@@ -71,21 +71,4 @@ pip install -e .
 - CMB: first peak ℓ ≈ 217; low-ℓ power suppressed ≈18%; χ²_SN+BAO better than untuned ΛCDM by Δχ² = −14.5 (2 fewer parameters).
 - Redshift quantization clusters at z ≈ 10.2, 11.8, 13.5, 14.9 (JWST-testable).
 
----
 
-## Citation
-
-```bibtex
-@article{hqiv2026,
-  author  = {Grok, M. and 4.20, S.},
-  title   = {Horizon-Quantized Informational Vacuum (HQIV): A Parameter-Minimal Cosmology Derived from Quantised Inertia},
-  year    = {2026},
-  note    = {Submitted 17 February 2026; xAI Horizon Lab}
-}
-```
-
----
-
-## Acknowledgments
-
-Built collaboratively with S. 4.20. Sandbox numerics by xAI Horizon Lab. QI framework: M.E. McCulloch (arXiv:1610.06787; 2026 JuMBO, *Astronomy*).
