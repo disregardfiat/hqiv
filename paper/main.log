@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.2.19)  20 FEB 2026 18:06
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.2.19)  20 FEB 2026 18:56
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -376,9 +376,10 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 ) [1
 
 {/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}]
-
-Package natbib Warning: Author undefined for citation`brodie2026' 
-(natbib)                on page 2 on input line 26.
+Overfull \hbox (2.97325pt too wide) in paragraph at lines 26--27
+\OT1/cmr/m/n/12 from the hori-zon physics com-mu-nity. No-tably, []Brodie[] [[]
+2026[]] de-rives a MOND-
+ []
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
@@ -396,9 +397,7 @@ Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-
-LaTeX Warning: `h' float specifier changed to `ht'.
-
+[6]
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 (hyperref)                removing `math shift' on input line 214.
@@ -411,7 +410,13 @@ Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 (hyperref)                removing `math shift' on input line 214.
 
-[6]
+
+Overfull \hbox (2.54645pt too wide) in paragraph at lines 220--221
+\OT1/cmr/m/n/12 mod-i-fi-ca-tions in-clud-ing scale-dependent $\OML/cmm/m/it/12
+ G[]\OT1/cmr/m/n/12 (\OML/cmm/m/it/12 a; k\OT1/cmr/m/n/12 )$, horizon-term Pois
+-son mod-
+ []
+
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
@@ -435,13 +440,13 @@ Package rerunfilecheck Info: File `main.out' has not changed.
 (rerunfilecheck)             Checksum: CFDBF892438CC2D88770428B403FBE1A;3810.
  ) 
 Here is how much of TeX's memory you used:
- 10229 strings out of 476182
- 153451 string characters out of 5795595
+ 10232 strings out of 476182
+ 153476 string characters out of 5795595
  1933975 words of memory out of 5000000
- 32028 multiletter control sequences out of 15000+600000
+ 32031 multiletter control sequences out of 15000+600000
  573940 words of font info for 95 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 75i,11n,79p,1017b,555s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 75i,11n,79p,1017b,557s stack positions out of 10000i,1000n,20000p,200000b,200000s
  </home/jr/.texlive2023/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1200.600pk>
  </home/jr/.texlive2023/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm0700.600pk> <
 /home/jr/.texlive2023/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1000.600pk></us
@@ -460,10 +465,10 @@ usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/sha
 re/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb></usr/share/tex
 live/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb></usr/share/texlive/t
 exmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
-Output written on main.pdf (10 pages, 223222 bytes).
+Output written on main.pdf (10 pages, 223058 bytes).
 PDF statistics:
- 294 PDF objects out of 1000 (max. 8388607)
- 244 compressed objects within 3 object streams
+ 306 PDF objects out of 1000 (max. 8388607)
+ 256 compressed objects within 3 object streams
  67 named destinations out of 1000 (max. 500000)
  169 words of extra memory for PDF output out of 10000 (max. 10000000)
 
