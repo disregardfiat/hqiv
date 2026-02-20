@@ -6,10 +6,16 @@ Howard~E. Bond et~al.
   the big bang.
 \newblock {\em Astrophysical Journal Letters}, 765(1):L12, 2013.
 
-\bibitem{Planck2018}
-Planck Collaboration.
-\newblock Planck 2018 results. vi. cosmological parameters.
-\newblock {\em Astronomy \& Astrophysics}, 641:A6, 2020.
+\bibitem{hqiv_repo}
+Steven Ettinger.
+\newblock {HQIV}: Horizon-quantized informational vacuum repository.
+\newblock \url{https://github.com/disregardfiat/hqiv}, 2026.
+\newblock Accessed: February 19, 2026.
+
+\bibitem{Hockney1988}
+R.~W. Hockney and J.~W. Eastwood.
+\newblock {\em Computer Simulation Using Particles}.
+\newblock Adam Hilger, Bristol, 1988.
 
 \bibitem{Labbe2023}
 Ivo Labbe et~al.
@@ -17,11 +23,22 @@ Ivo Labbe et~al.
   bang.
 \newblock {\em Nature}, 616:266--269, 2023.
 
-\bibitem{Pitrou2018}
-Cyril Pitrou, Alain Coc, Jean-Philippe Uzan, and Elisabeth Vangioni-Flam.
-\newblock A new bbn constraint on the variation of the fine-structure constant.
+\bibitem{mcculloch2007}
+M.~E. McCulloch.
+\newblock Modelling the pioneer anomaly as modified inertia.
 \newblock {\em Monthly Notices of the Royal Astronomical Society},
-  482(3):3816--3823, 2018.
+  376(1):338--342, 2007.
+
+\bibitem{mcculloch2016}
+M.~E. McCulloch.
+\newblock Quantised inertia from relativity and the uncertainty principle.
+\newblock {\em Europhysics Letters}, 115(6):69001, 2016.
+
+\bibitem{Metropolis1949}
+Nicholas Metropolis and Stanislaw Ulam.
+\newblock The monte carlo method.
+\newblock {\em Journal of the American Statistical Association},
+  44(247):335--341, 1949.
 
 \bibitem{Riess2022}
 Adam~G. Riess et~al.
@@ -29,11 +46,5 @@ Adam~G. Riess et~al.
   with 1 km/s/mpc uncertainty from the hubble space telescope and the sh0es
   team.
 \newblock {\em Astrophysical Journal Letters}, 934(1):L7, 2022.
-
-\bibitem{Robertson2023}
-Brant~E. Robertson et~al.
-\newblock Discovery and properties of the earliest galaxies with confirmed
-  distances.
-\newblock {\em Nature Astronomy}, 2023.
 
 \end{thebibliography}

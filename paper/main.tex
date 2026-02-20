@@ -8,7 +8,7 @@
 
 \title{Horizon-Quantized Informational Vacuum (HQIV): \\ A Covariant Baryon-Only Cosmological Framework from Quantised Inertia}
 
-\author{Steven Ettinger$^{1}$\thanks{Excelsior University (Undergraduate Student), Independent Researcher}
+\author{Steven Ettinger Jr\thanks{Excelsior University (Undergraduate Student), Independent Researcher}}
 
 \date{February 19, 2026}
 
@@ -17,11 +17,11 @@
 \maketitle
 
 \begin{abstract}
-We derive a covariant cosmological framework from the single axiom of conserved total informational energy with causal-horizon cutoffs on vacuum modes (Quantised Inertia). The framework has \textbf{zero free cosmological parameters}: the horizon-smoothing parameter $\beta$ emerges from frame-dependent integration over anisotropic horizons (approaching unity as the universe ages), and the matter density should emerge from horizon-quantized mode statistics during the early universe. We present the background ODE and linear perturbation equations derived from the axiom and modified metric. Monte Carlo fitting yields excellent agreement with observations ($\chi^2 = 0.26$): universe age 17.1 Gyr, $H_0 = 73.2$ km/s/Mpc (matching local measurements), and proper time at $z=14$ of 803 Myr (2.7$\times$ $\Lambda$CDM, addressing JWST galaxy age tensions). N-body simulations show reduced growth factor (0.36$\times$ $\Lambda$CDM) and non-zero vorticity from horizon coupling—both falsifiable predictions. The horizon term supplies additional gravitational dynamics without dark matter or dark energy.
+We derive a covariant cosmological framework from the single axiom of conserved total informational energy with causal-horizon cutoffs on vacuum modes (Quantised Inertia). The framework aims for zero free parameters in its ultimate first-principles form: the horizon-smoothing parameter $\beta$ emerges from frame-dependent integration over anisotropic horizons (approaching unity as the universe ages), and the matter density should emerge from horizon-quantized mode statistics during the early universe. We present the background ODE and linear perturbation equations derived from the axiom and modified metric. Illustrative Monte Carlo exploration shows the framework can reproduce key observational constraints with minimal tuning. These early results are encouraging but preliminary; full implementation of the vorticity-coupled perturbation hierarchy is required to test whether the model can match the detailed acoustic-peak structure and growth history of the observed universe.
 \end{abstract}
 
 \section{Introduction}
-Standard cosmology requires unseen components for 95\% of the energy budget and faces tensions with JWST early galaxies, the Hubble tension, and large-scale coherence. We present a minimal baryon-only alternative based on horizon-modified inertia. The goal is to derive the governing equations from first principles and outline the exact software needed to test them quantitatively.
+Standard cosmology requires unseen components for 95\% of the energy budget and faces tensions with JWST early galaxies, the Hubble tension, and large-scale coherence. We present a minimal baryon-only alternative based on horizon-modified inertia, building on the quantised inertia framework developed by McCulloch \citep{mcculloch2007, mcculloch2016}. The goal is to derive the governing equations from first principles and outline the exact software needed to test them quantitatively.
 
 \section{Theoretical Framework}
 The core axiom is conservation of total informational energy:
@@ -107,7 +107,7 @@ The effective gravitational coupling varies with horizon scale:
 \begin{equation}
 G(a) = G_0 \left(\frac{\Theta_0}{\Theta(a)}\right)^\alpha = G_0 \left(\frac{H(a)}{H_0}\right)^\alpha
 \end{equation}
-where the exponent $\alpha \approx 0.6$ is derived from the requirement that the horizon term correctly reproduces galaxy rotation curves in the low-acceleration regime (McCulloch 2007--2026). This is the same scaling that accounts for the observed $a_0 = cH_0/2$ acceleration scale in galactic dynamics.
+where the exponent $\alpha \approx 0.6$ is derived from the requirement that the horizon term correctly reproduces galaxy rotation curves in the low-acceleration regime \citep{mcculloch2007, mcculloch2016}. This is the same scaling that accounts for the observed $a_0 = cH_0/2$ acceleration scale in galactic dynamics.
 
 \section{Covariant Formulation}
 The modified metric is
@@ -150,7 +150,11 @@ Vector sector (vorticity equation with horizon amplification):
 
 These equations are the core of the framework. If implemented without additional assumptions, they should produce deeper potentials on low-acceleration scales, faster early collapse, and protected angular momentum on horizon scales.
 
-\section{Numerical Results from Monte Carlo Fitting}
+\section{Illustrative Numerical Exploration}
+
+The numerical exploration in this section uses a simple Monte Carlo parameter search and a preliminary low-resolution particle-mesh N-body simulation. These runs \emph{do} include the vorticity amplification term (eq.~12) and its back-reaction on inertia reduction. However, they remain toy-level: limited resolution ($32^3$ particles, 100 Mpc/$h$ box), simplified force law, and no full Boltzmann hierarchy. The results should therefore be viewed as encouraging first indications that the horizon coupling can influence growth and vorticity, not as definitive predictions. Quantitative claims await the complete testing roadmap in Section~8.
+
+\subsection{Monte Carlo Parameter Search}
 
 We perform a Monte Carlo parameter search to test whether the HQIV framework can simultaneously satisfy key observational constraints. The fitting uses a $\chi^2$ minimization approach comparing HQIV predictions to:
 \begin{itemize}
@@ -161,7 +165,7 @@ We perform a Monte Carlo parameter search to test whether the HQIV framework can
 
 \subsection{Methodology}
 
-The HQIV Hubble parameter is parametrized as:
+We employ a Monte Carlo sampling approach \citep{Metropolis1949} to explore the parameter space. The HQIV Hubble parameter is parametrized as:
 \begin{equation}
 H^2(a) = H_0^2 \left[ \Omega_m a^{-3} + \Omega_r a^{-4} + \Omega_{\rm horizon} a^{-n} \right]
 \end{equation}
@@ -207,21 +211,11 @@ $H_0$ (local) & 73.2 km/s/Mpc & 67.4 km/s/Mpc & Matches SH0ES \\
 
 \subsection{Comparison with Untuned $\Lambda$CDM}
 
-We emphasize that these results represent an \textbf{untuned} comparison. The $\Lambda$CDM values quoted are from Planck 2018 \citep{Planck2018} with standard parameters ($\Omega_m = 0.315$, $\Omega_\Lambda = 0.685$, $H_0 = 67.4$ km/s/Mpc). Key differences:
-
-\begin{enumerate}
-    \item \textbf{Hubble tension resolved:} HQIV naturally yields $H_0 \approx 73$ km/s/Mpc, matching local distance-ladder measurements \citep{Riess2022} without requiring additional physics.
-    
-    \item \textbf{JWST tension addressed:} The extended proper time at high redshift ($t(z=14) \approx 800$ Myr vs $\sim$300 Myr in $\Lambda$CDM) provides more time for galaxy formation, potentially explaining the mature galaxies observed by JWST at $z > 10$ \citep{Labbe2023, Robertson2023}.
-    
-    \item \textbf{No dark energy:} The horizon term $\Omega_{\rm horizon} a^{-n}$ with $n \approx 1$ provides late-time acceleration without a cosmological constant.
-    
-    \item \textbf{No dark matter:} The observed matter density $\Omega_m \approx 0.03$--$0.05$ is purely baryonic, consistent with BBN constraints \citep{Pitrou2018}.
-\end{enumerate}
+These illustrative results suggest the framework can address the Hubble tension and JWST early-galaxy timing issues with a single axiom. Whether it can also reproduce the precise acoustic-peak positions and $\sigma_8$ of the real universe remains to be seen once the full coupling is implemented. Further research is warranted to determine if the horizon term can truly deliver on all fronts.
 
 \subsection{N-body Simulation Results}
 
-We implement a particle-mesh (PM) N-body simulator with HQIV modifications including scale-dependent $G_{\rm eff}(a,k)$, horizon-term Poisson modification, and vorticity amplification. A simulation with $32^3$ particles in a 100 Mpc/$h$ box from $a = 0.1$ to $a = 1.0$ yields:
+We implement a particle-mesh (PM) N-body simulator following the methodology of Hockney \& Eastwood \citep{Hockney1988} with HQIV modifications including scale-dependent $G_{\rm eff}(a,k)$, horizon-term Poisson modification, and vorticity amplification. The PM method solves Poisson's equation on a grid using FFT-based techniques, allowing efficient computation of gravitational forces in cosmological volumes. A simulation with $32^3$ particles in a 100 Mpc/$h$ box from $a = 0.1$ to $a = 1.0$ yields:
 
 \begin{table}[h]
 \centering
@@ -249,34 +243,34 @@ If the full scale-dependent inertia reduction and vorticity source are correctly
 \end{itemize}
 
 \section{Path to Quantitative Testing: Software Roadmap}
-To test or falsify the equations we must build the following (all open-source):
+To rigorously test or falsify the equations derived above, the following open-source software steps are planned (all code will be released in the repository):
 
-\textbf{1. Custom vorticity-coupled modal solver (Python/NumPy, 1--2 weeks)}  
-Evolve the full scalar + vector system with the vorticity amplification term feeding back into the inertia reduction and scalar velocity divergence. Compute $C_\ell$ and test whether the coupling shifts peaks away from the standard-like range.
+\begin{enumerate}
+    \item \textbf{Vorticity-coupled linear modal solver (1--2 weeks)}  
+    Custom NumPy/SciPy Fourier evolution of the exact scalar (eqs.~9--11) and vector (eq.~12) equations with explicit back-reaction of the vorticity amplification term on inertia reduction and scalar velocity divergence. Compute $C_\ell$ up to $\ell=500$ and test whether the coupling shifts the first acoustic peak away from the naive $\sim 279$ position.
 
-\textbf{2. Full CLASS fork (2--4 weeks)}  
-Inject our $H(a)$ table, modified metric, varying $G$, inertia reduction, and vorticity source. Run against Planck 2018 likelihood + DESI BAO.
+    \item \textbf{Full CLASS fork (2--4 weeks)}  
+    Inject the $H(a)$ table, modified metric, varying $G$, inertia reduction, and vorticity source. Run against Planck 2018 TT/EE/TE + low-$\ell$ likelihood and DESI BAO. Report $\Delta\chi^2$ vs $\Lambda$CDM with honest numerical error bars from resolution and approximation choices.
 
-\textbf{3. Non-linear extension (1--2 months)}  
-Couple to particle-mesh or SPH code with our force law. Quantify filament angular-momentum excess and $\sigma_8$.
+    \item \textbf{Non-linear extension (1--2 months)}  
+    Couple to a particle-mesh or SPH code with the derived force law. Run 100--500 Mpc boxes to quantify filament angular-momentum excess and $\sigma_8$.
 
-\textbf{4. Specific falsification tests}
-\begin{itemize}
-    \item Bullet Cluster: modified-force N-body + ray-tracing; must recover observed lensing-gas separation.
-    \item Solar-system / binary-pulsar constraints: verify no deviation at high acceleration.
-    \item BBN consistency with the modified expansion history.
-    \item $\beta(t)$ evolution: measure horizon anisotropy at different redshifts.
-\end{itemize}
+    \item \textbf{Targeted falsification tests}
+    \begin{itemize}
+        \item Bullet Cluster: modified-force N-body + ray-tracing of the exact geometry; must recover the observed lensing--gas separation within errors.
+        \item Solar-system / binary-pulsar constraints (Shapiro delay, perihelion precession, etc.).
+        \item BBN consistency with the background ODE.
+        \item $\beta(t)$ evolution: measure horizon anisotropy at different redshifts using large-scale structure surveys.
+    \end{itemize}
+\end{enumerate}
+
+Quantitative claims about the model's performance will only be made after these steps are completed and results are reproducible.
 
 \section{Conclusions}
-The equations derived here constitute a minimal baryon-only covariant framework with \textbf{zero free cosmological parameters}. The horizon-smoothing parameter $\beta$ is determined by the anisotropy of the past light cone and asymptotically approaches unity as the universe ages. The matter density $\Omega_m$ should emerge from horizon-quantized mode statistics during the early universe — a prediction to be tested by full simulations from the electroweak scale to recombination.
-
-The methodologies are fully specified. The software roadmap is concrete and falsifiable. If the coupling performs as derived, the framework should resolve several cosmological tensions with no additional components. We invite the community to implement and test the equations.
-
-\textbf{Ultimate test:} Does a simulation from first principles predict the observed $\eta \sim 10^{-9}$, $\Omega_m \sim 0.05$, and $\beta_0 \sim 0.9$?
+The equations derived here provide a minimal baryon-only covariant framework that aims for a parameter-free formulation in its ultimate first-principles form. The current illustrative exploration is encouraging and motivates the next steps. The methodologies are fully specified and the software roadmap is concrete. We invite the community to join us in implementing and rigorously testing the equations. The ultimate test is whether a complete first-principles simulation from the electroweak scale onward naturally predicts the observed $\eta \sim 10^{-9}$, $\Omega_m \sim 0.05$, and $\beta_0 \sim 0.9$.
 
 \section*{Acknowledgments}
-Equations and methodologies derived collaboratively with grok-4.20, opus-4.6, minimax-2.5. Repository contains the independent ODE solver and planned modal scaffolding.
+Equations and methodologies derived collaboratively with grok-4.20, opus-4.6, minimax-2.5. All code, the independent ODE solver, preliminary N-body implementation with vorticity coupling, and planned modal scaffolding are available in the companion repository \citep{hqiv_repo}.
 
 \bibliographystyle{plain}
 \bibliography{refs}
