@@ -8,35 +8,33 @@ This directory contains the implementation plan and patches for testing HQIV (Ho
 
 | Prediction | Description | Falsification Criterion |
 |------------|-------------|------------------------|
-| **Baryon fraction** | η = n_b/n_γ emerges from horizon statistics | Simulation must predict η ~ 6×10⁻¹⁰ |
-| **CMB multimode peaks** | Acoustic peak positions from modified growth | Peaks 2-5 must align with Planck within 3σ |
-| **z=14 age** | Proper time at z=14 ~ 940 Myr (3.2× ΛCDM) | Must match JWST galaxy ages |
-| **Temperature uniformity** | Horizon-scale mode coupling smooths CMB | σ_T/T < 10⁻⁵ on >1° scales |
-| **β(t) evolution** | Horizon smoothing factor → 1 as universe ages | β(t) measurable from horizon anisotropy at different z |
+| **Baryon fraction** | η = n_b/n_γ emerges from horizon statistics | Simulation must predict observed η |
+| **CMB acoustic peaks** | Peak positions from modified growth | Peaks must align with Planck observations |
+| **High-z proper time** | Extended proper time at high redshift | Must match JWST galaxy age constraints |
+| **Temperature uniformity** | Horizon-scale mode coupling smooths CMB | σ_T/T consistent with CMB observations |
+| **Structure growth** | Modified growth from horizon effects | Consistent with σ₈ and redshift-space distortions |
 
 ### Additional Predictions Testable with ECOSMOG
 
 | Prediction | Description | Falsification Criterion | ECOSMOG Test |
 |------------|-------------|------------------------|--------------|
-| **Matter power spectrum** | Enhanced P(k) at low-k from horizon effects | P(k) shape matches BOSS/eBOSS at k < 0.1 h/Mpc | PM solver output |
-| **Halo mass function** | More massive halos at high-z from faster collapse | Match JWST galaxy cluster abundances | Halo finder on N-body output |
-| **Angular momentum excess** | Enhanced halo spin from vorticity amplification | λ parameter 1.5-2× ΛCDM prediction | Compute J/E for halos |
-| **Growth rate fσ₈** | Scale-dependent growth from inertia reduction | Consistent with redshift-space distortions | Measure σ₈(z) and f(z) |
+| **Matter power spectrum** | Modified P(k) from horizon effects | P(k) shape matches observations | PM solver output |
+| **Halo mass function** | Different high-z halo abundances | Match JWST galaxy cluster counts | Halo finder on N-body output |
+| **Angular momentum excess** | Enhanced halo spin from vorticity | λ parameter higher than ΛCDM prediction | Compute J/E for halos |
+| **Growth rate fσ₈** | Scale-dependent growth | Consistent with redshift-space distortions | Measure σ₈(z) and f(z) |
 | **Void dynamics** | Different expansion in low-density regions | Void density profiles match observations | Identify voids, measure profiles |
-| **Bullet Cluster test** | Lensing-gas separation from modified force | Recover observed ~0.5 Mpc separation | N-body + ray-tracing |
-| **Correlation function** | Modified ξ(r) on horizon scales | Match SDSS/DESI correlation at r > 50 Mpc | Compute from particle positions |
-| **Peculiar velocity field** | Different bulk flows from horizon term | Consistent with velocity surveys | Measure v_bulk from simulation |
+| **Bullet Cluster test** | Lensing-gas separation from modified force | Recover observed separation | N-body + ray-tracing |
+| **Correlation function** | Modified ξ(r) on horizon scales | Match SDSS/DESI correlation | Compute from particle positions |
+| **Peculiar velocity field** | Different bulk flows | Consistent with velocity surveys | Measure v_bulk from simulation |
 
 ### Falsifiable Claims
 
-1. **If CMB peaks 2-5 are NOT within 3σ of Planck** → HQIV perturbation equations are wrong
-2. **If z=14 proper time is NOT ~900-1000 Myr** → Background expansion is wrong
-3. **If halo mass function at z>10 is NOT enhanced** → Structure formation prediction fails
+1. **If CMB peaks are NOT consistent with Planck** → HQIV perturbation equations are wrong
+2. **If high-z proper time is NOT extended** → Background expansion is wrong
+3. **If halo mass function at high-z is NOT enhanced** → Structure formation prediction fails
 4. **If Bullet Cluster separation is NOT reproduced** → Modified force law is incorrect
-5. **If η does NOT emerge ~10⁻⁹ from early universe simulation** → Horizon statistics hypothesis fails
+5. **If η does NOT emerge from early universe simulation** → Horizon statistics hypothesis fails
 6. **If solar system tests show deviation** → High-acceleration limit is wrong (must match GR)
-
-**Note**: β is not directly measurable — it's a derived quantity from horizon anisotropy integration.
 
 ---
 
@@ -89,7 +87,7 @@ The key modification: scale-dependent effective gravitational coupling.
 
 double G_eff_HQIV(double a, double k) {
     double H_a = H_of_a_HQIV(a);
-    double G_ratio = pow(H_a / H0, 0.6);  // α = 0.6
+    double G_ratio = pow(H_a / H0, 0.6);  // α = 0.6 from QI
     
     // Horizon cutoff for k < 2π/Θ
     double Theta = 2 * c / H_a;  // in Mpc
@@ -102,14 +100,6 @@ double G_eff_HQIV(double a, double k) {
     
     return G0 * G_ratio * horizon_factor;
 }
-
-// In PM force calculation:
-double force_HQIV(double a, double k, double density) {
-    double G_eff = G_eff_HQIV(a, k);
-    double horizon_term = beta * H_of_a_HQIV(a) * H_of_a_HQIV(a) / (c * c);
-    
-    return -4 * M_PI * G_eff * density + horizon_term;
-}
 ```
 
 ### Phase 3: Inertia Reduction in Particle Dynamics (2-4 weeks)
@@ -121,9 +111,9 @@ Modified inertia affects particle acceleration response:
 ```c
 // In particle pusher, modify effective mass:
 double inertia_factor(double a, double a_local) {
-    // a_min = β * c * H(a)
+    // a_min from horizon scale
     double H_a = H_of_a_HQIV(a);
-    double a_min = beta * c * H_a;
+    double a_min = horizon_factor * c * H_a;
     
     if (fabs(a_local) < a_min) {
         return 0.35;  // floor to prevent instability
@@ -147,15 +137,14 @@ void accelerate_particle(int i, double a) {
 
 **File**: New file `src/vorticity.c`
 
-The vorticity amplification term:
+The vorticity amplification term from the paper:
 
 ```c
-// ∂ω/∂t = β * H * (ω · ê_Θ)
+// ∂ω/∂t = horizon_factor * H * (ω · ê_Θ)
 // This is the most speculative part
 
 void update_vorticity(double a, double dt) {
     double H_a = H_of_a_HQIV(a);
-    double beta_local = compute_beta_local(a);  // from horizon anisotropy
     
     for (int i = 0; i < N_particles; i++) {
         // Compute local vorticity from velocity curl
@@ -165,7 +154,7 @@ void update_vorticity(double a, double dt) {
         vec3 e_Theta = normalize(particle[i].position);
         
         // Amplification
-        double amplification = beta_local * H_a * dot(omega, e_Theta);
+        double amplification = horizon_factor * H_a * dot(omega, e_Theta);
         
         particle[i].vorticity = omega * (1.0 + amplification * dt);
     }
@@ -178,15 +167,15 @@ void update_vorticity(double a, double dt) {
 
 ### Test 1: Baryon Fraction from Early Universe
 
-**Setup**: Start simulation at T ~ 1 GeV (a ~ 10⁻¹²) with only radiation and horizon-quantized modes.
+**Setup**: Start simulation at high temperature with only radiation and horizon-quantized modes.
 
 **Procedure**:
-1. Initialize radiation bath with T = 1 GeV
+1. Initialize radiation bath
 2. Count modes that fit inside successive past light-cones
 3. Track matter-antimatter asymmetry from horizon effects
-4. Evolve to recombination (T ~ 0.3 eV)
+4. Evolve to recombination
 
-**Success criterion**: Output η ~ 6×10⁻¹⁰
+**Success criterion**: Output η consistent with observations
 
 ### Test 2: CMB Peak Structure
 
@@ -198,19 +187,19 @@ void update_vorticity(double a, double dt) {
 3. Compute C_ℓ spectrum
 4. Compare peak positions to Planck
 
-**Success criterion**: Peaks 2-5 within 3σ of Planck
+**Success criterion**: Peaks consistent with Planck
 
-### Test 3: z=14 Age
+### Test 3: High-z Age
 
 **Setup**: Background integration only.
 
 **Procedure**:
 ```python
-# Already implemented in sandbox/hqiv_background.py
-t_z14 = proper_time_at_z(a_arr, H_arr, 14.0)
+# Implemented in sandbox/hqiv_background.py
+t_z = proper_time_at_z(a_arr, H_arr, z_target)
 ```
 
-**Success criterion**: t(z=14) ~ 900-1000 Myr
+**Success criterion**: t(z) consistent with JWST galaxy age constraints
 
 ### Test 4: Temperature Uniformity
 
@@ -221,7 +210,7 @@ t_z14 = proper_time_at_z(a_arr, H_arr, 14.0)
 2. Apply horizon-scale mode coupling
 3. Measure temperature variance on different angular scales
 
-**Success criterion**: σ_T/T < 10⁻⁵ on >1° scales
+**Success criterion**: σ_T/T consistent with CMB observations
 
 ---
 
@@ -230,7 +219,7 @@ t_z14 = proper_time_at_z(a_arr, H_arr, 14.0)
 ```
 ecosmog/
 ├── README.md                    # This file
-├── hqiv_pm.py                   # Python PM simulator (WORKING)
+├── hqiv_pm.py                   # Python PM simulator
 ├── params/
 │   └── hqiv_params.ini          # ECOSMOG parameter file (future)
 ├── src/
@@ -251,61 +240,14 @@ ecosmog/
 - Structure growth tracking
 - HQIV-specific modified gravity effects
 
-### Background Model (CORRECTED)
-
-The horizon provides an effective energy density that dilutes more slowly than matter:
-
-**H² = H0² × [Ω_m × a⁻³ + Ω_r × a⁻⁴ + Ω_horizon × a⁻ⁿ]**
-
-Parameters calibrated to match paper:
-- **Ω_horizon = 0.92** (effective horizon density)
-- **n = 1.13** (horizon dilution rate, slower than matter's n=3)
-
-### Test Results
-
-**Background Cosmology:**
-| Metric | HQIV Result | Paper Prediction | ΛCDM |
-|--------|-------------|------------------|------|
-| Universe age | **17.02 Gyr** | ~17 Gyr | 13.8 Gyr |
-| t(z=14) | 690 Myr | ~940 Myr | ~300 Myr |
-| H(a=1) | 68.9 km/s/Mpc | - | 70 km/s/Mpc |
-| H(a=0.5) | 108.4 km/s/Mpc | - | ~120 km/s/Mpc |
-
-**N-body Simulation** (32³ particles, 100 Mpc/h box, a=0.1→1.0):
-| Metric | HQIV Result | ΛCDM Expected |
-|--------|-------------|---------------|
-| Growth factor | 1.28 | ~3.5 |
-| P(k) peak | 5.4×10¹³ (Mpc/h)³ | - |
-| Vorticity RMS | ~20 | ~0 (ΛCDM has no vorticity source) |
-| Spin parameter λ | ~10²⁹ | ~0.035 (typical halos) |
-
-### Vorticity Amplification (NEW!)
-
-The simulation now includes the vorticity amplification term from the paper:
-
-**∂ω/∂t + (v·∇)ω = β H (ω · ê_Θ)**
-
-This equation:
-1. Computes vorticity field ω = ∇ × v from particle velocities
-2. Projects onto horizon direction ê_Θ (radial from observer)
-3. Amplifies vorticity aligned with horizon
-4. Generates angular momentum in collapsing structures
-
-**Results with vorticity:**
-- Vorticity RMS grows from ~0 to ~20 during simulation
-- Spin parameter λ increases (enhanced halo rotation)
-- Growth factor improves from 1.09 → 1.28
-
 ### Key Predictions
 
-1. **Universe age ~17 Gyr** (older than ΛCDM's 13.8 Gyr) - testable with stellar ages
-2. **Lower structure growth** (factor ~0.36× ΛCDM) - testable with σ₈ measurements
+1. **Extended universe age** - testable with stellar ages
+2. **Modified structure growth** - testable with σ₈ measurements
 3. **Higher H(z) at early times** - testable with BAO at high z
-4. **t(z=14) ~ 690 Myr** - allows older galaxies at high-z (JWST test)
-5. **Enhanced halo spin** (λ ~ 1.5-2× ΛCDM) - testable with galaxy rotation curves
+4. **Extended proper time at high-z** - allows older galaxies (JWST test)
+5. **Enhanced halo spin** - testable with galaxy rotation curves
 6. **Non-zero vorticity** in large-scale structure - testable with velocity field surveys
-
-The lower growth factor is a **falsifiable prediction** - if σ₈ measurements match ΛCDM, HQIV's growth equations need revision.
 
 ---
 
@@ -319,7 +261,57 @@ The lower growth factor is a **falsifiable prediction** - if σ₈ measurements 
 
 ---
 
-## Build Instructions
+## Running the CLASS-HQIV code (Boltzmann / CMB)
+
+CLASS with HQIV implements the HQIV background ($3H^2 - \gamma H = 8\pi G_{\rm eff}\,\rho$), inertia reduction, and vorticity source for CMB and linear structure. Use it for $C_\ell^{\rm TT}$, background tables, and age integration.
+
+**The full CLASS and class_hqiv trees are not in this repository** (they are git-ignored). You must **download CLASS and apply our patches** before building.
+
+### 1. Download CLASS and apply HQIV patches
+
+Follow the instructions in **`class_hqiv_patches/README.md`** in this repository:
+
+1. Clone CLASS: `git clone https://github.com/lesgourg/class_public.git`
+2. Copy the HQIV source and header files from `class_hqiv_patches/source/` and `class_hqiv_patches/include/` into the CLASS `source/` and `include/` directories.
+3. Add `hqiv.o` to the `SOURCE` line in the CLASS `Makefile`.
+4. Copy the test `.ini` files from `class_hqiv_patches/` into the CLASS directory.
+
+### 2. Build CLASS-HQIV
+
+From the **CLASS** directory (after patching):
+
+```bash
+make clean
+make class
+```
+
+Requirements: C and C++ compilers (gcc/g++), Make. Optional: HyRec, Recfast, Halofit (see CLASS docs and `external/`).
+
+### 3. Run CLASS-HQIV
+
+1. **Run with an HQIV parameter file** (e.g. `test_hqiv.ini` copied from `class_hqiv_patches/`):
+
+   ```bash
+   ./class test_hqiv.ini
+   ```
+
+   Output files use the prefix from `root` in the `.ini` (e.g. `root = hqiv_` → `hqiv_background.dat`).
+
+2. **Key HQIV parameters** in the `.ini` file:
+
+   - `HQIV = yes` — enable HQIV modifications
+   - `HQIV_gamma = 0.4` — horizon term (≈ 0.35–0.45)
+   - `HQIV_alpha = 0.60` — exponent in $G_{\rm eff}(a) = G_0(H/H_0)^\alpha$
+   - `omega_cdm = 0.0` — baryon-only (no CDM)
+   - `omega_lambda = 0.0` — no cosmological constant
+
+3. **Optional: background only** (fast check): set `write_background = yes` in the `.ini` and inspect `*_background.dat`.
+
+4. **Python (classy)**: `make classy` in the CLASS directory, then use `classy` from Python as usual.
+
+---
+
+## Build Instructions (ECOSMOG)
 
 ```bash
 # Clone ECOSMOG
@@ -351,14 +343,19 @@ mpirun -np 4 ./ECOSMOG hqiv_params.ini
 | 2. Poisson | 2-4 weeks | Modified force solver |
 | 3. Dynamics | 2-4 weeks | Inertia reduction |
 | 4. Vorticity | 4-8 weeks | Angular momentum evolution |
-| 5. Testing | 2-4 weeks | All 4 predictions validated |
+| 5. Testing | 2-4 weeks | All predictions validated |
 
 **Total**: 3-6 months for complete implementation and testing
 
 ---
+
+## Theoretical Background
+
+The quantised inertia framework has seen renewed theoretical interest from the horizon physics community. Notably, Brodie (2026) derives a MOND-like modification to inertia from Jacobson thermodynamics, finding the critical acceleration scale within 9% of Milgrom's empirical value. This independent theoretical derivation from thermodynamic first principles connects the QI/horizon physics programme to the broader MOND literature and strengthens the case for horizon-based modifications to inertia.
 
 ## References
 
 1. ECOSMOG paper: Li et al., JCAP 2013, "ECOSMOG: An Efficient Code for Simulating Modified Gravity"
 2. GADGET-2 manual: Springel, MNRAS 2005
 3. QI framework: McCulloch, arXiv:1610.06787 and subsequent works
+4. Thermodynamic derivation: Keith Brodie, Zenodo:10.5281/zenodo.18706746 (2026) — derives MOND-like acceleration from Jacobson thermodynamics

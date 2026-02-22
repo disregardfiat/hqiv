@@ -4,6 +4,7 @@ paper/*.aux paper/*.bbl paper/*.blg paper/*.log paper/*.out paper/*.synctex.gz p
 # Python
 sandbox/.venv/
 class_integration/.venv/
+venv/
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -11,12 +12,29 @@ __pycache__/
 dist/
 build/
 
-# CLASS / HiCLASS
+# CLASS / HiCLASS (upstream and full fork — use class_hqiv_patches to apply our modifications)
+CLASS/
+class_hqiv/
 class_integration/hqiv_Ha.txt
 *.so
+
+# Work product / internal
+*.log
+run.log
+*.stdout.log
+*AUDIT*
+*audit*.md
+*_audit_*
+work/
+tmp/
+temp/
+.tmp/
+*.bak
+*.swp
 
 # IDE / OS
 .idea/
 .vscode/
+.cursor/
 .DS_Store
 *~

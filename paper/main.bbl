@@ -1,22 +1,45 @@
-\begin{thebibliography}{9}
+\begin{thebibliography}{16}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
   \providecommand{\doi}[1]{doi: #1}\else
   \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
 
-\bibitem[Bond et~al.(2013)]{Bond2013}
-Howard~E. Bond et~al.
-\newblock Hd 140283: A star in the solar neighborhood that formed shortly after
-  the big bang.
-\newblock \emph{Astrophysical Journal Letters}, 765\penalty0 (1):\penalty0 L12,
-  2013.
-\newblock \doi{10.1088/2041-8205/765/1/L12}.
+\bibitem[Arnowitt et~al.(2008)Arnowitt, Deser, and Misner]{Arnowitt2008}
+Richard Arnowitt, Stanley Deser, and Charles~W. Misner.
+\newblock Republication of: The dynamics of general relativity.
+\newblock \emph{General Relativity and Gravitation}, 40\penalty0 (9):\penalty0
+  1997--2027, 2008.
+\newblock \doi{10.1007/s10714-008-0661-1}.
+\newblock URL \url{https://doi.org/10.1007/s10714-008-0661-1}.
+\newblock Reprint of the 1962 classic chapter; arXiv:gr-qc/0405109.
+
+\bibitem[Bekenstein(1973)]{Bekenstein1973}
+Jacob~D. Bekenstein.
+\newblock Black holes and entropy.
+\newblock \emph{Physical Review D}, 7\penalty0 (8):\penalty0 2333--2346, 1973.
+\newblock \doi{10.1103/PhysRevD.7.2333}.
+
+\bibitem[Bekenstein(2004)]{Bekenstein2004}
+Jacob~D. Bekenstein.
+\newblock Relativistic gravitation theory for the modified newtonian dynamics
+  paradigm.
+\newblock \emph{Physical Review D}, 70\penalty0 (8):\penalty0 083509, 2004.
+\newblock \doi{10.1103/PhysRevD.70.083509}.
 
 \bibitem[Brodie(2026)]{brodie2026}
 K.~Brodie.
 \newblock Derivation of quantised inertia from {Jacobson} thermodynamics, 2026.
 \newblock Zenodo. doi:10.5281/zenodo.18706746.
+
+\bibitem[Clowe et~al.(2006)Clowe, Brada{\v{c}}, Gonzalez, Markevitch, Randall,
+  Jones, and Zaritsky]{Clowe2006}
+Douglas Clowe, Maru{\v{s}}a Brada{\v{c}}, Anthony~H. Gonzalez, Maxim
+  Markevitch, Scott~W. Randall, Christine Jones, and Dennis Zaritsky.
+\newblock A direct empirical proof of the existence of dark matter.
+\newblock \emph{Astrophysical Journal Letters}, 648\penalty0 (2):\penalty0
+  L109--L113, 2006.
+\newblock \doi{10.1086/508162}.
 
 \bibitem[Ettinger(2026)]{hqiv_repo}
 Steven Ettinger.
@@ -25,17 +48,19 @@ Steven Ettinger.
 \newblock URL \url{https://github.com/disregardfiat/hqiv}.
 \newblock Accessed: February 19, 2026.
 
-\bibitem[Hockney and Eastwood(1988)]{Hockney1988}
-R.~W. Hockney and J.~W. Eastwood.
-\newblock \emph{Computer Simulation Using Particles}.
-\newblock Adam Hilger, Bristol, 1988.
+\bibitem[Hawking(1975)]{Hawking1975}
+S.~W. Hawking.
+\newblock Particle creation by black holes.
+\newblock \emph{Communications in Mathematical Physics}, 43\penalty0
+  (3):\penalty0 199--220, 1975.
+\newblock \doi{10.1007/BF02345020}.
 
-\bibitem[Labbe et~al.(2023)]{Labbe2023}
-Ivo Labbe et~al.
-\newblock A population of red candidate massive galaxies ~600 myr after the big
-  bang.
-\newblock \emph{Nature}, 616:\penalty0 266--269, 2023.
-\newblock \doi{10.1038/s41586-023-05786-2}.
+\bibitem[Jacobson(1995)]{Jacobson1995}
+Ted Jacobson.
+\newblock Thermodynamics of spacetime: The einstein equation of state.
+\newblock \emph{Physical Review Letters}, 75\penalty0 (7):\penalty0 1260--1263,
+  1995.
+\newblock \doi{10.1103/PhysRevLett.75.1260}.
 
 \bibitem[McCulloch(2007)]{mcculloch2007}
 M.~E. McCulloch.
@@ -50,12 +75,32 @@ M.~E. McCulloch.
 \newblock \emph{Europhysics Letters}, 115\penalty0 (6):\penalty0 69001, 2016.
 \newblock \doi{10.1209/0295-5075/115/69001}.
 
-\bibitem[Metropolis and Ulam(1949)]{Metropolis1949}
-Nicholas Metropolis and Stanislaw Ulam.
-\newblock The monte carlo method.
-\newblock \emph{Journal of the American Statistical Association}, 44\penalty0
-  (247):\penalty0 335--341, 1949.
-\newblock \doi{10.1080/01621459.1949.10483310}.
+\bibitem[McGaugh et~al.(2016)McGaugh, Lelli, and Schombert]{McGaugh2016}
+Stacy~S. McGaugh, Federico Lelli, and James~M. Schombert.
+\newblock Radial acceleration relation in rotationally supported galaxies.
+\newblock \emph{Physical Review Letters}, 117\penalty0 (20):\penalty0 201101,
+  2016.
+\newblock \doi{10.1103/PhysRevLett.117.201101}.
+
+\bibitem[Milgrom(1983)]{Milgrom1983a}
+Mordehai Milgrom.
+\newblock A modification of the newtonian dynamics as a possible alternative to
+  the hidden mass hypothesis.
+\newblock \emph{Astrophysical Journal}, 270:\penalty0 365--370, 1983.
+\newblock \doi{10.1086/161130}.
+
+\bibitem[{Planck Collaboration}(2020)]{Planck2018}
+{Planck Collaboration}.
+\newblock Planck 2018 results. vi. cosmological parameters.
+\newblock \emph{Astronomy \& Astrophysics}, 641:\penalty0 A6, 2020.
+\newblock \doi{10.1051/0004-6361/201833910}.
+
+\bibitem[Renda(2019)]{Renda2019}
+A.~Renda.
+\newblock Testing quantised inertia: predictions and counter-arguments.
+\newblock \emph{Monthly Notices of the Royal Astronomical Society},
+  489\penalty0 (1):\penalty0 881--891, 2019.
+\newblock \doi{10.1093/mnras/stz2183}.
 
 \bibitem[Riess et~al.(2022)]{Riess2022}
 Adam~G. Riess et~al.
@@ -65,5 +110,11 @@ Adam~G. Riess et~al.
 \newblock \emph{Astrophysical Journal Letters}, 934\penalty0 (1):\penalty0 L7,
   2022.
 \newblock \doi{10.3847/2041-8213/ac5c5b}.
+
+\bibitem[Unruh(1976)]{Unruh1976}
+W.~G. Unruh.
+\newblock Notes on black-hole evaporation.
+\newblock \emph{Physical Review D}, 14\penalty0 (4):\penalty0 870, 1976.
+\newblock \doi{10.1103/PhysRevD.14.870}.
 
 \end{thebibliography}

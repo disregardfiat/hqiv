@@ -46,11 +46,15 @@ pip install -e .
 
 (For the modified-gravity fork with μ/γ support, use the HiCLASS branch; see `class_integration/MODIFICATIONS.md`.)
 
-### CLASS / HiCLASS
+### CLASS with HQIV (Boltzmann / CMB)
 
-1. Generate the H(a) table: run `sandbox/hqiv_background.py` (above).
-2. Use the parameter set and instructions in `class_integration/hqiv_class.py`.
-3. Apply the **exact source modifications** described in `class_integration/MODIFICATIONS.md` (custom background, perturbation boost, horizon cutoff).
+The full CLASS tree and the CLASS-HQIV fork are **not** tracked in this repo (they are git-ignored). To build and run CLASS with HQIV support:
+
+1. **Download CLASS**: `git clone https://github.com/lesgourg/class_public.git`
+2. **Apply HQIV patches**: Copy the files from `class_hqiv_patches/` into the CLASS `source/` and `include/` directories, and add `hqiv.o` to the Makefile `SOURCE` line. Full steps are in **`class_hqiv_patches/README.md`**.
+3. **Build and run**: `make class` then `./class test_hqiv.ini` (copy the `.ini` files from `class_hqiv_patches/`).
+
+See **`ecosmog/README.md`** (section “Running the CLASS-HQIV code”) for parameter descriptions and run options.
 
 ---
 
@@ -60,7 +64,9 @@ pip install -e .
 |------|----------|
 | `paper/` | LaTeX source (main.tex, refs.bib) — arXiv/Overleaf ready |
 | `sandbox/` | HQIV background ODE (scipy), H(a) table output |
-| `class_integration/` | CLASS/HiCLASS params, H(a) export, and **MODIFICATIONS.md** for background.c / perturbations.c |
+| `class_hqiv_patches/` | **HQIV-modified CLASS files only** — clone CLASS and apply these to build CLASS-HQIV |
+| `ecosmog/` | ECOSMOG implementation plan and **steps to run CLASS-HQIV** |
+| `class_integration/` | CLASS/HiCLASS params, H(a) export (legacy) |
 
 ---
 
