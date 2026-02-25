@@ -1,0 +1,31 @@
+\begin{thebibliography}{3}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Jackson(1999)]{Jackson1999}
+John~David Jackson.
+\newblock \emph{Classical Electrodynamics}.
+\newblock Wiley, New York, 3rd edition, 1999.
+\newblock Standard reference for Maxwell's equations in materials with
+  $\mathbf{D}$, $\mathbf{H}$, $\mathbf{E}$, $\mathbf{B}$ fields.
+
+\bibitem[Maxwell(1873)]{Maxwell1873}
+James~Clerk Maxwell.
+\newblock \emph{A Treatise on Electricity and Magnetism}.
+\newblock Clarendon Press, Oxford, 1873.
+\newblock Original formulation of Maxwell's equations with full $\mathbf{H}$
+  field; see Vol.~II, Chap.~IX for the electromagnetic field equations in
+  quaternionic form.
+
+\bibitem[Schuller(2020)]{Schuller2020}
+Frederic~P. Schuller.
+\newblock The we-heraeus international winter school on gravity and light.
+\newblock Lecture series, Friedrich Schiller University Jena, 2020.
+\newblock URL \url{https://www.gravity-and-light.org}.
+\newblock Central lectures on differential geometry, general relativity, and
+  the geometric formulation of field theories.
+
+\end{thebibliography}

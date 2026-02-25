@@ -1,0 +1,3 @@
+[submodule "n-body_pysco_hqiv/pysco"]
+	path = n-body_pysco_hqiv/pysco
+	url = https://github.com/mianbreton/pysco.git
