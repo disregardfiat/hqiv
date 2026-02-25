@@ -60,6 +60,21 @@ Copy the HQIV test parameter files from `class_hqiv_patches/` (e.g. `test_hqiv.i
 
 Output files use the prefix set by `root` in the `.ini` file (e.g. `hqiv_background.dat`).
 
+### 4. Peak-alignment input-space search
+
+With the **Omega_eff closure** fix, the budget equation sets `Omega_Lambda = 1 - γ/3 - Ω_tot` so that `H(a=1) = H0`. Universe age then matches the Python wrapper (~19 Gyr for γ=0.4, not ~34 Gyr).
+
+To re-run the multipole peak alignment search (paper: *peak_alignment_scan*):
+
+```bash
+# From CLASS root (class_public), with Python interface built:
+make
+export PYTHONPATH=$PWD/python:$PYTHONPATH
+python /path/to/HQIV/class_hqiv_patches/peak_alignment_scan.py --steps 4 --out peak_scan_results
+```
+
+Optional: `--fine` runs a second pass around the best point. Results are written to `peak_scan_results.txt` and `peak_scan_results.npy`.
+
 ## Contents of this directory
 
 | Path | Description |
@@ -75,5 +90,6 @@ Output files use the prefix set by `root` in the `.ini` file (e.g. `hqiv_backgro
 | `test_minimal.ini` | Minimal HQIV parameters |
 | `test_hqiv_debug.ini` | Debug/verbose run |
 | `test_baryons_only.ini` | Baryon-only test |
+| `peak_alignment_scan.py` | Input-space search over γ, ω_b, h, α to match CMB peak positions to Planck |
 
 For more run options and parameter descriptions, see **Running the CLASS-HQIV code** in `ecosmog/README.md`.

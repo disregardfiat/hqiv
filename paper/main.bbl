@@ -1,8 +1,53 @@
-\begin{thebibliography}{0}
+\begin{thebibliography}{6}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
   \providecommand{\doi}[1]{doi: #1}\else
   \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Brodie(2026)]{brodie2026}
+K.~Brodie.
+\newblock Derivation of quantised inertia from {Jacobson} thermodynamics.
+\newblock Zenodo, 2026.
+\newblock URL \url{https://zenodo.org/records/18706746}.
+\newblock Backward-hemisphere overlap integral; factor $1/6$ and thermodynamic
+  coefficient $\gamma$.
+
+\bibitem[Ettinger(2026)]{hqiv_repo}
+Steven Ettinger.
+\newblock {HQIV}: Horizon-quantized informational vacuum repository.
+\newblock \url{https://github.com/disregardfiat/hqiv}, 2026.
+\newblock URL \url{https://github.com/disregardfiat/hqiv}.
+\newblock Accessed: February 19, 2026.
+
+\bibitem[Jacobson(1995)]{Jacobson1995}
+Ted Jacobson.
+\newblock Thermodynamics of spacetime: The einstein equation of state.
+\newblock \emph{Physical Review Letters}, 75\penalty0 (7):\penalty0 1260--1263,
+  1995.
+\newblock \doi{10.1103/PhysRevLett.75.1260}.
+
+\bibitem[Mueller(2026)]{mueller2026}
+Mueller.
+\newblock Observer patch holography.
+\newblock Zenodo, 2026.
+\newblock URL \url{https://zenodo.org/records/18288114}.
+\newblock Information-theoretic axioms on overlapping patches of a global 2D
+  holographic screen; $Z_6$ topological defect structure.
+
+\bibitem[Renda(2019)]{Renda2019}
+A.~Renda.
+\newblock Testing quantised inertia: predictions and counter-arguments.
+\newblock \emph{Monthly Notices of the Royal Astronomical Society},
+  489\penalty0 (1):\penalty0 881--891, 2019.
+\newblock \doi{10.1093/mnras/stz2183}.
+
+\bibitem[Schuller(2020)]{Schuller2020}
+Frederic~P. Schuller.
+\newblock The we-heraeus international winter school on gravity and light.
+\newblock Lecture series, Friedrich Schiller University Jena, 2020.
+\newblock URL \url{https://www.gravity-and-light.org}.
+\newblock Hyperbolicity criterion for field theories; geometric formulation of
+  {Maxwell}'s equations and emergent causal structure.
 
 \end{thebibliography}

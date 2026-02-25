@@ -26,22 +26,24 @@ Gyr_s = 3.1536e16      # Gigayear in seconds
 
 def hqiv_age(gamma=0.40, Omega_m0=0.06, h=0.732, Neff=3.046):
     """
-    Universe age in Gyr for HQIV background (CLASS-consistent).
+    Universe age in Gyr for HQIV background.
 
-    All numerical integration uses units c = ℏ = 1, where φ = H and the
-    horizon term is -γ H; dimensionless form 3H² - γH = 8π G_eff ρ
-    (with G_eff = G_0). Full SI factors are restored only in the
-    final equations in the paper.
-    Uses full radiation (photons + neutrinos), no calibration hack, and
-    high-precision quad integration. Matches CLASS convention:
-    3*H^2 - gamma*H = 3*rho_tot (rho_tot = Omega_m + Omega_r in critical
-    density units), so E = (gamma + sqrt(gamma^2 + 36*rho_tot))/6.
+    Modified Friedmann in dimensionless form:
+        h² - (γ/3)h = Ω(a)
+    where h = H/H0.  At a = 1 the closure condition h(1) = 1 requires
+        Ω_total(1) = 1 − γ/3,
+    so an effective constant-density term
+        Ω_eff = 1 − γ/3 − Ω_m − Ω_r
+    appears alongside matter and radiation.  This is not "dark energy"
+    but the geometric consequence of the γH horizon term; omitting it
+    gives H(a=1) ≈ 0.32 H0 instead of H0.
     """
     Omega_r0 = 2.47e-5 / h**2 * (1 + 0.2271 * Neff)  # photons + neutrinos
+    omega_eff = 1.0 - gamma / 3.0 - Omega_m0 - Omega_r0
 
     def E(a):
-        """Dimensionless Hubble E(a) = H(a)/H0 from 3H² - γH = 3ρ (CLASS units)."""
-        rho_tot = Omega_m0 / a**3 + Omega_r0 / a**4
+        """Dimensionless Hubble E(a) = H(a)/H0 from 3h² - γh = 3Ω(a)."""
+        rho_tot = Omega_m0 / a**3 + Omega_r0 / a**4 + omega_eff
         disc = gamma**2 + 36.0 * rho_tot
         return (gamma + np.sqrt(disc)) / 6.0
 
@@ -175,7 +177,7 @@ class CosmologicalBackground:
         
         if self.hqiv_on:
             # γ from Brodie's thermodynamics (default 0.55)
-            gamma = getattr(self, 'gamma', 0.55)
+            gamma = getattr(self, 'gamma', 0.40)
             
             # To satisfy H(a=1) = H0:
             # At a=1: 3(1)² - γ(1) - 3Ω(1) = 0 → Ω(1) = 1 - γ/3

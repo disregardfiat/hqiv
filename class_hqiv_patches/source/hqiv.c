@@ -44,6 +44,8 @@ int hqiv_init(struct hqiv_parameters * phqiv) {
   phqiv->alpha_hqiv = _HQIV_ALPHA_DEFAULT_;
   phqiv->chi_hqiv = _HQIV_CHI_DEFAULT_;
   phqiv->fmin_hqiv = _HQIV_FMIN_DEFAULT_;
+  phqiv->alpha_dynamic = _FALSE_;
+  phqiv->H0_closure = _FALSE_;
   
   /** - Initialize derived quantities to zero */
   phqiv->phi_horizon = 0.0;
@@ -129,21 +131,29 @@ int hqiv_Hubble_from_density(
 }
 
 /**
- * Compute effective gravitational coupling G_eff(a)
+ * Compute effective gravitational coupling G_eff(a) exactly from the paper.
  *
- * Paper: we use G_eff = G_0 throughout. A Planck-suppressed correction
- * G_eff(φ) = G0 / (1 + γ (ℓ_P φ/c²)²) is negligible except near the
- * Planck epoch and has no effect on the runs here.
+ * From the HQIV modified Friedmann equation with curvature (Paper §E.1):
+ *   3H² - γH = 8π G_eff ρ_tot - 3K/a²
  *
- * For perturbations we optionally apply varying G (Paper Section 2.3):
- *   G_eff/G0 = (H/H0)^α
+ * Rearranging:  8π G_eff ρ_tot = 3H² - γ_class H + 3K/a²
  *
- * @param H            Input: Hubble parameter at scale factor a
- * @param H0           Input: Hubble parameter today
- * @param alpha        Input: varying G exponent
- * @param phi          Input: horizon field φ = cH in SI units [1/s]
- * @param gamma        Input: thermodynamic coefficient
- * @param G_eff_ratio  Output: G_eff/G0
+ * At z=0 (a=1): 8π G_0 ρ_0 = 3H_0² - γ_class0 H_0 + 3K
+ *
+ * Dividing:
+ *   G_eff/G_0 = [3H² - γ_class H + 3K/a²] / [3H_0² - γ_class0 H_0 + 3K]
+ *
+ * where γ_class = γ_eff(a) × H_0 and γ_class0 = γ_theory × H_0.
+ *
+ * @param H            Input: Hubble parameter at scale factor a  [Mpc^-1]
+ * @param H0           Input: Hubble parameter today              [Mpc^-1]
+ * @param alpha        Input: unused (kept for API compatibility)
+ * @param phi          Input: unused (kept for API compatibility)
+ * @param gamma        Input: epoch-dependent γ_eff (dimensionless)
+ * @param gamma0       Input: γ at z=0 (= γ_theory = 0.40)
+ * @param K_over_a2    Input: K/a² curvature term [Mpc^-2]
+ * @param K            Input: K curvature [Mpc^-2] (for z=0 normalization)
+ * @param G_eff_ratio  Output: G_eff/G_0
  * @return the error status
  */
 
@@ -153,37 +163,39 @@ int hqiv_G_eff(
                double alpha,
                double phi,
                double gamma,
+               double gamma0,
+               double K_over_a2,
+               double K,
                double * G_eff_ratio
                ) {
   
-  double H_ratio;
-  double planck_factor;
-  double lP_SI = 1.616255e-35;  /* Planck length in meters */
-  double c_SI = 2.99792458e8;   /* Speed of light in m/s */
-  
-  /** - Compute H/H0 ratio */
-  if (H0 > 0.0) {
-    H_ratio = H / H0;
-  } else {
-    H_ratio = 1.0;
+  double gamma_class, gamma_class0;
+  double num, denom;
+
+  (void)alpha;
+  (void)phi;
+
+  if (H0 <= 0.0) {
+    *G_eff_ratio = 1.0;
+    return _SUCCESS_;
   }
-  
-  /** - Compute varying G contribution: (H/H0)^α */
-  *G_eff_ratio = pow(H_ratio, alpha);
-  
-  /** - Compute Planck suppression factor: 1/(1 + γ ℓ_P² φ²)
-       Note: φ has units of 1/s, ℓ_P has units of m
-       We need ℓ_P² × φ²/c² to make it dimensionless
-       Actually, φ = cH, so φ²/c² = H², and ℓ_P² H²/c² is dimensionless */
-  
-  /* The Planck suppression is extremely small for cosmological H values
-     (H ~ 10^-18 1/s, ℓ_P ~ 10^-35 m, so ℓ_P²H²/c² ~ 10^-106)
-     We include it for completeness but it's negligible */
-  
-  planck_factor = 1.0;  /* Negligible at cosmological scales */
-  
-  *G_eff_ratio *= planck_factor;
-  
+
+  gamma_class  = gamma  * H0;
+  gamma_class0 = gamma0 * H0;
+
+  /* Denominator: value at z=0 */
+  denom = 3.0 * H0 * H0 - gamma_class0 * H0 + 3.0 * K;
+
+  if (denom <= 0.0) {
+    *G_eff_ratio = 1.0;
+    return _SUCCESS_;
+  }
+
+  /* Numerator: value at scale factor a */
+  num = 3.0 * H * H - gamma_class * H + 3.0 * K_over_a2;
+
+  *G_eff_ratio = (num > 0.0) ? (num / denom) : 0.0;
+
   return _SUCCESS_;
 }
 

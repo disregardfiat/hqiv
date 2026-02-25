@@ -220,12 +220,34 @@ int background_functions(
   double gamma_hqiv, alpha_hqiv;
   double G_eff_ratio;
   double H_standard;
+  double gamma_eff;  /* epoch-dependent γ: 0 pre-recombination, γ_theory post-recombination */
 
   rho_tot = 0.;
   p_tot = 0.;
   dp_dloga = 0.;
   rho_r=0.;
   rho_m=0.;
+
+  /** HQIV emergent lattice: densities come from pre-filled table only; interpolate from table */
+  if (pba->hqiv_emergent == _TRUE_) {
+    int last_index = 0;
+    double loga = log(a);
+    int pvecback_size = (return_format == normal_info) ? pba->bg_size_normal :
+                       ((return_format == short_info) ? pba->bg_size_short : pba->bg_size);
+    class_call(array_interpolate_spline(pba->loga_table,
+                                        pba->bt_size,
+                                        pba->background_table,
+                                        pba->d2background_dloga2_table,
+                                        pba->bg_size,
+                                        loga,
+                                        &last_index,
+                                        pvecback,
+                                        pvecback_size,
+                                        pba->error_message),
+               pba->error_message,
+               pba->error_message);
+    return _SUCCESS_;
+  }
 
   class_test(a <= 0.,
              pba->error_message,
@@ -360,49 +382,85 @@ int background_functions(
     rho_r += pvecback[pba->index_bg_rho_idr];
   }
 
-  /** 
-   * HQIV MODIFICATION: Compute H from modified Friedmann equation
-   * With c explicit: 3H² - γ(H/c) = (8π G_eff/c²)(ρ_m + ρ_r).
-   * All numerics in units c = ℏ = 1: φ = H, horizon term −γH;
-   * 3H² - γH = 8π G_eff ρ (we use G_eff = G_0 throughout).
+  /**
+   * HQIV MODIFICATION: Modified Friedmann equation with epoch-dependent γ_eff(a).
    *
-   * CLASS units: H in 1/Mpc, rho_tot = (8πG/3) ρ_physical
-   * →  H² - (γ/3) H = G_eff_ratio * rho_tot
-   * γ_paper = 0.40 (dimensionless) → γ_class = γ_paper * H0
+   * Physical principle: Before recombination the baryon-photon plasma is tightly
+   * coupled; radiation pressure + Thomson scattering wash out local horizon
+   * anisotropies → γ_eff = 0.  After recombination baryons decouple and each
+   * matter parcel feels its own causal horizon → γ_eff = γ_theory = 0.40 (fixed
+   * by Brodie's backward-hemisphere overlap integral / discrete hockey-stick
+   * combinatorics).
+   *
+   * Pre-recombination:  3H² = 8πG ρ                (standard Friedmann)
+   * Post-recombination: 3H² - γ_eff H = 8πG ρ     (HQIV modified)
+   *
+   * The γH term acts as an effective horizon energy density that drives
+   * late-time acceleration without a cosmological constant.
+   *
+   * G_eff is derived exactly from the Friedmann equation (no α parameter):
+   *   G_eff/G_0 = H(3H - γ_eff_class) / [H_0(3H_0 - γ_eff0_class)]
+   *
+   * CLASS units: H in 1/Mpc, rho_tot = (8πG/3) ρ_physical.
    */
-  
+
   H_standard = sqrt(rho_tot - pba->K/a/a);
 
   if (pba->hqiv.hqiv_on == _TRUE_) {
-    double gamma_paper = pba->hqiv.gamma_hqiv;           /* 0.40 from paper */
-    double gamma_class = gamma_paper * pba->H0;          /* dimensional conversion */
-    double rho_crit = rho_tot - pba->K/a/a;
-    double G_eff_ratio = 1.0;  /* Background: G_eff=1 for stability; varying G applied in perturbations */
-    
-    /* Paper Eq. 13: 3H² - γH = 8πG_eff ρ. Use G_eff=1 in background (Planck term negligible) */
+    double gamma_theory = pba->hqiv.gamma_hqiv;   /* 0.40 — fixed, not a free parameter */
+    double a_rec = 1.0 / 1090.0;                  /* recombination scale factor */
+    double da_width = 0.02 * a_rec;               /* smooth transition width (~few % of a_rec) */
+    double rho_eff = rho_tot - pba->K/a/a;
+
+    /* Smooth step: γ_eff(a) = γ_theory × ½[1 + tanh((a - a_rec)/Δa)] */
+    gamma_eff = gamma_theory * 0.5 * (1.0 + tanh((a - a_rec) / da_width));
+
     {
+      double gamma_class = gamma_eff * pba->H0;   /* dimensional: [Mpc⁻¹] */
       double b = gamma_class / 3.0;
-      double c_term = G_eff_ratio * rho_crit;
-      pvecback[pba->index_bg_H] = (b + sqrt(b*b + 4.0 * c_term)) / 2.0;
+      pvecback[pba->index_bg_H] = (b + sqrt(b*b + 4.0 * rho_eff)) / 2.0;
     }
-    /* No calibration hack: H(a=1) comes from modified Friedmann, so age responds to Ω_m changes */
-    
-    /* G_eff(a) for perturbations: Paper Eq. 6, G(a) = G0 (H/H0)^α */
+
+    /* G_eff/G_0 from the exact Friedmann relation with curvature (paper §E.1) */
     class_call(hqiv_G_eff(pvecback[pba->index_bg_H], pba->H0, pba->hqiv.alpha_hqiv,
-                          pvecback[pba->index_bg_H], gamma_paper, &(pba->hqiv.G_eff_ratio)),
+                          pvecback[pba->index_bg_H], gamma_eff,
+                          pba->hqiv.gamma_hqiv,      /* γ_theory at z=0 */
+                          pba->K / (a * a),           /* K/a² */
+                          pba->K,                     /* K (for z=0 normalization) */
+                          &(pba->hqiv.G_eff_ratio)),
                pba->error_message, pba->error_message);
     pba->hqiv.phi_horizon = pvecback[pba->index_bg_H] / pba->H0;
-    
-    /* Inertia factor f(α, φ): Paper Eq. 11, φ = H in CLASS units */
-    hqiv_inertia_factor(pba->hqiv.alpha_hqiv, pvecback[pba->index_bg_H],
-                        pba->hqiv.chi_hqiv, pba->hqiv.fmin_hqiv, &(pba->hqiv.inertia_factor));
+
+    /* α fully dynamic: α_eff = χφ/6 so f = χ/(χ+1); else use input alpha */
+    {
+      double alpha_eff = (pba->hqiv.alpha_dynamic == _TRUE_)
+                        ? (pba->hqiv.chi_hqiv * pvecback[pba->index_bg_H] / 6.0)
+                        : pba->hqiv.alpha_hqiv;
+      hqiv_inertia_factor(alpha_eff, pvecback[pba->index_bg_H],
+                          pba->hqiv.chi_hqiv, pba->hqiv.fmin_hqiv, &(pba->hqiv.inertia_factor));
+    }
   }
   else {
+    gamma_eff = 0.0;
     pvecback[pba->index_bg_H] = H_standard;
   }
 
-  /** - compute derivative of H with respect to conformal time */
-  pvecback[pba->index_bg_H_prime] = - (3./2.) * (rho_tot + p_tot) * a + pba->K/a;
+  /** - compute derivative of H with respect to conformal time.
+   * Standard GR: H' = -(3/2)(ρ+p)a + K/a  (from Raychaudhuri + Friedmann).
+   * HQIV: differentiating 3H²-γ_eff H = 3(ρ-K/a²) w.r.t. conformal time τ gives
+   *   (6H-γ_eff_class) H' = -9H(ρ+p)a + 6HK/a,  γ_eff_class = γ_eff × H0.
+   * This reduces to the standard GR result when γ_eff → 0. */
+  {
+    double gamma_eff_class = gamma_eff * pba->H0;
+    double H_now           = pvecback[pba->index_bg_H];
+    double denom           = 6.0 * H_now - gamma_eff_class;
+    if (denom > 1e-30 * pba->H0) {
+      pvecback[pba->index_bg_H_prime] = (-9.0 * H_now * (rho_tot + p_tot) * a
+                                         + 6.0 * H_now * pba->K / a) / denom;
+    } else {
+      pvecback[pba->index_bg_H_prime] = - (3./2.) * (rho_tot + p_tot) * a + pba->K/a;
+    }
+  }
 
   /* Total energy density*/
   pvecback[pba->index_bg_rho_tot] = rho_tot;
@@ -418,8 +476,17 @@ int background_functions(
     pvecback[pba->index_bg_p_tot_prime] += pvecback[pba->index_bg_p_prime_scf];
   }
 
-  /** - compute critical density */
-  rho_crit = rho_tot - pba->K/a/a;
+  /** - compute critical density.
+   * Standard GR: rho_crit = H².
+   * HQIV: From 3H² - γ_eff H = 8πG ρ, we have H² = ρ_tot + (γ_eff H_0 / 3) H.
+   * The critical density is still H² so that Ω_m + Ω_r + Ω_horizon = 1. */
+  if (pba->hqiv.hqiv_on == _TRUE_) {
+    double H_here = pvecback[pba->index_bg_H];
+    rho_crit = H_here * H_here;
+  }
+  else {
+    rho_crit = rho_tot - pba->K/a/a;
+  }
   class_test(rho_crit <= 0.,
              pba->error_message,
              "rho_crit = %e instead of strictly positive",rho_crit);
@@ -1294,9 +1361,10 @@ int background_checks(
     /* HQIV-specific output */
     if (pba->hqiv.hqiv_on == _TRUE_) {
       printf(" -> HQIV cosmology enabled:\n");
-      printf("    gamma = %.4f\n", pba->hqiv.gamma_hqiv);
-      printf("    alpha = %.4f\n", pba->hqiv.alpha_hqiv);
-      printf("    chi = %.4f\n", pba->hqiv.chi_hqiv);
+      printf("    gamma_theory = %.4f (fixed from overlap integral; no free parameter)\n", pba->hqiv.gamma_hqiv);
+      printf("    gamma_eff(a): 0 pre-recombination, smoothly -> %.2f post-recombination\n", pba->hqiv.gamma_hqiv);
+      printf("    chi = %.4f, f_min = %.4f\n", pba->hqiv.chi_hqiv, pba->hqiv.fmin_hqiv);
+      printf("    G_eff/G_0 = H(3H - gamma_eff*H0) / [H0(3H0 - gamma*H0)] (exact, no alpha)\n");
     }
   }
 
@@ -1312,6 +1380,13 @@ int background_solve(
                      struct background *pba
                      ) {
 
+  /** HQIV emergent lattice mode: fully parameter-free 4D object from pre-computed table */
+  if (pba->hqiv_emergent == _TRUE_) {
+    class_call(hqiv_emergent_lattice_solve(ppr, pba),
+               pba->error_message, pba->error_message);
+    return _SUCCESS_;
+  }
+
   struct background_parameters_and_workspace bpaw;
   double * pvecback_integration;
   double * pvecback;
@@ -1326,6 +1401,8 @@ int background_solve(
   double D_today;
   int index_loga, index_scf;
   int * used_in_output;
+  int h0_iter;
+  double H_today_closure, omega_b_closure, omega_g_closure, omega_ur_closure, h_new_closure;
 
   int n_ncdm;
 
@@ -1334,6 +1411,8 @@ int background_solve(
   bpaw.pvecback = pvecback;
 
   class_alloc(pvecback_integration,pba->bi_size*sizeof(double),pba->error_message);
+
+  for (h0_iter = 0; h0_iter < 20; h0_iter++) {
 
   class_call(background_initial_conditions(ppr,pba,pvecback,pvecback_integration,&(loga_ini)),
              pba->error_message,
@@ -1463,7 +1542,156 @@ int background_solve(
 
   pba->Omega0_m = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_Omega_m];
   pba->Omega0_r = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_Omega_r];
-  pba->Omega0_de = 1. - (pba->Omega0_m + pba->Omega0_r + pba->Omega0_k);
+
+  if (pba->hqiv.hqiv_on == _TRUE_) {
+    /* In HQIV, the "missing energy" is the horizon term γH, not Λ.
+     * From H² = ρ + (γ_class/3)H → Ω_m + Ω_r + Ω_horizon = 1
+     * where Ω_horizon = γ_class/(3 H_today). */
+    double H_today = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_H];
+    double g_class = pba->hqiv.gamma_hqiv * pba->H0;
+    double Omega_hz = (H_today > 0.0) ? g_class / (3.0 * H_today) : 0.0;
+    pba->Omega0_de = Omega_hz;
+    if (pba->background_verbose > 0) {
+
+      /* --- HQIV energy budget --- */
+      double h_ratio = H_today / pba->H0;
+      double h_actual_kms = H_today * 299792.458;  /* H in km/s/Mpc */
+
+      /* Omega_k physical: -K/H_actual² (Omega0_k uses H_input normalization) */
+      double Omega_k_phys  = (H_today > 0.0) ? (-pba->K / (H_today * H_today)) : 0.0;
+
+      printf(" -> HQIV energy budget at z=0:\n");
+      printf("    H_input (h=%.3f)     = %.6e Mpc^-1  (%.1f km/s/Mpc)\n",
+             pba->h, pba->H0, pba->h * 100.);
+      printf("    H_actual(z=0)        = %.6e Mpc^-1  (%.1f km/s/Mpc, ratio = %.4f)\n",
+             H_today, h_actual_kms, h_ratio);
+      printf("    Omega_m              = %.6f\n", pba->Omega0_m);
+      printf("    Omega_r              = %.6e\n", pba->Omega0_r);
+      printf("    Omega_k (phys)       = %.6f  (input Omega_k = %.4f)\n", Omega_k_phys, pba->Omega0_k);
+      printf("    Omega_horizon (γH)   = %.6f  (replaces dark energy)\n", Omega_hz);
+      printf("    Sum (closure)        = %.6f\n",
+             pba->Omega0_m + pba->Omega0_r + Omega_k_phys + Omega_hz);
+
+      /* --- Energy conservation: CMB blackbody vs horizon + post-recomb energy ---
+       *
+       * At recombination (γ_eff = 0), all energy is in matter + radiation.
+       * Today, the same energy budget is: matter + radiation + horizon energy.
+       *
+       * In a comoving volume:
+       *   E_matter is conserved (ρ_m a³ = const)
+       *   E_radiation loses energy to expansion (ρ_r a³ ∝ a⁻¹)
+       *   E_horizon = (γ_class H / 3) a³ has GROWN from 0 at recombination
+       *
+       * The radiation energy "lost" between recombination and today equals:
+       *   ΔE_rad = ρ_r(a_rec) a_rec³ - ρ_r(a_0) a_0³
+       *          = ρ_r(a_0) a_0³ × (a_0/a_rec - 1)
+       *          = ρ_r(a_0) × z_rec
+       *
+       * The horizon energy today (per comoving volume, a_0=1):
+       *   E_horizon = γ_class × H_today / 3
+       *
+       * These should be related: the horizon "collected" the energy that
+       * radiation lost to expansion.  Ratio = E_horizon / ΔE_rad.
+       */
+      {
+        double rho_g_0 = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_rho_g];
+        double rho_ur_0 = pba->has_ur ? (pba->Omega0_ur * pba->H0 * pba->H0) : 0.0;
+        double rho_r_0 = rho_g_0 + rho_ur_0;
+        double z_rec = 1090.0;
+        double a_rec = 1.0 / (1.0 + z_rec);
+
+        /* Radiation energy lost since recombination (per comoving vol, a_0=1) */
+        double rho_r_rec_comov = rho_r_0 * (1.0 + z_rec);   /* ρ_r(a_rec) × a_rec³ / a_0³ = ρ_r_0 × (1+z) */
+        double delta_E_rad = rho_r_rec_comov - rho_r_0;      /* = ρ_r_0 × z_rec */
+
+        /* Horizon energy density today */
+        double rho_horizon_0 = g_class * H_today / 3.0;
+
+        /* Total energy at recombination (comoving, no horizon term since γ_eff=0) */
+        double rho_b_0 = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_rho_b];
+        double rho_m_rec_comov = rho_b_0;  /* matter conserved: ρ_m a³ = const */
+        double E_rec = rho_m_rec_comov + rho_r_rec_comov;
+
+        /* Total energy today = matter + radiation + horizon */
+        double E_today = rho_b_0 + rho_r_0 + rho_horizon_0;
+
+        printf("\n -> HQIV energy conservation (recombination → today, comoving volume):\n");
+        printf("    ρ_CMB(z=0)           = %.6e  (T₀ = 2.725 K blackbody)\n", rho_g_0);
+        printf("    ρ_radiation(z=0)     = %.6e  (photons + neutrinos)\n", rho_r_0);
+        printf("    ρ_horizon(z=0)       = %.6e  (γH/3 accumulated since z_rec)\n", rho_horizon_0);
+        printf("    ΔE_rad lost(z_rec→0) = %.6e  (radiation redshift loss)\n", delta_E_rad);
+        printf("    ρ_horizon / ΔE_rad   = %.4f  (horizon captured fraction)\n",
+               delta_E_rad > 0 ? rho_horizon_0 / delta_E_rad : 0.0);
+        printf("    E(z_rec, comov)      = %.6e  (matter + radiation, no horizon)\n", E_rec);
+        printf("    E(z=0, comov)        = %.6e  (matter + radiation + horizon)\n", E_today);
+        printf("    E(z=0) / E(z_rec)    = %.6f\n", E_rec > 0 ? E_today / E_rec : 0.0);
+      }
+
+      /* --- Time dilation: wall-clock vs observed ---
+       *
+       * Wall-clock age: from integrating dt = da/(aH) with the actual H(a).
+       * Observers measure H_actual(z=0), not H_input.
+       *
+       * Hubble time:  t_H = 1/H_actual  (upper bound on age)
+       * ΛCDM inferred age: t_LCDM ≈ (2/3)/H_0_observed × correction ≈ 13.8 Gyr
+       *   (for H_0 = 73.4 km/s/Mpc, Planck ΛCDM gives ~13.8 Gyr)
+       *
+       * The time dilation factor shows how much older the universe really is
+       * compared to what a ΛCDM observer would infer from the same local H.
+       */
+      {
+        double t_wall = pba->age;  /* Gyr */
+        double t_Hubble_actual = 1.0 / H_today / _Gyr_over_Mpc_;  /* Gyr */
+        double t_Hubble_input = 1.0 / pba->H0 / _Gyr_over_Mpc_;   /* Gyr */
+
+        /* ΛCDM age for Ω_m=0.3, Ω_Λ=0.7:
+         * t = (1/H_0) × (2/3√Ω_Λ) × arcsinh(√(Ω_Λ/Ω_m))
+         *   = 0.9643 / H_0  (for standard Planck-like Ω_m=0.3) */
+        double t_LCDM = 0.9643 / pba->H0 / _Gyr_over_Mpc_;
+
+        /* What a ΛCDM observer measuring H_actual would infer */
+        double t_LCDM_from_Hactual = 0.9643 / H_today / _Gyr_over_Mpc_;
+
+        printf("\n -> HQIV time dilation:\n");
+        printf("    Wall-clock age                = %.2f Gyr  (actual, integrated)\n", t_wall);
+        printf("    1/H_actual(z=0)               = %.2f Gyr  (Hubble time)\n", t_Hubble_actual);
+        printf("    1/H_input                     = %.2f Gyr  (Hubble time, input h=%.3f)\n",
+               t_Hubble_input, pba->h);
+        printf("    ΛCDM age (H_input, h=%.3f)    = %.2f Gyr  (ΛCDM observer, Ω_m=0.3)\n",
+               pba->h, t_LCDM);
+        printf("    ΛCDM age (H_actual=%.1f km/s)  = %.2f Gyr  (ΛCDM at actual H)\n",
+               h_actual_kms, t_LCDM_from_Hactual);
+        printf("    Dilation: wall / ΛCDM(H_input)= %.2f×  (universe %.1f× older than ΛCDM says)\n",
+               t_LCDM > 0 ? t_wall / t_LCDM : 0.0, t_LCDM > 0 ? t_wall / t_LCDM : 0.0);
+        printf("    Geodesic compression: H_actual/H_input = %.4f\n", h_ratio);
+      }
+    }
+    /* H0 closure: shoot for h so H(a=1) = H0 (fully dynamic H) */
+    if (pba->hqiv.H0_closure == _TRUE_) {
+      H_today_closure = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_H];
+      if (fabs(H_today_closure - pba->H0) < 1e-6 * pba->H0)
+        break;
+      omega_b_closure = pba->Omega0_b * pba->h * pba->h;
+      omega_g_closure = pba->Omega0_g * pba->h * pba->h;
+      omega_ur_closure = pba->Omega0_ur * pba->h * pba->h;
+      h_new_closure = pba->h * (H_today_closure / pba->H0);
+      pba->h = h_new_closure;
+      pba->H0 = h_new_closure * 1.e5/_c_/_Mpc_over_m_;
+      pba->Omega0_b = omega_b_closure / (h_new_closure * h_new_closure);
+      pba->Omega0_g = omega_g_closure / (h_new_closure * h_new_closure);
+      pba->Omega0_ur = omega_ur_closure / (h_new_closure * h_new_closure);
+      pba->K = -pba->Omega0_k * pba->H0 * pba->H0;
+    } else {
+      break;
+    }
+  } else {
+    break;
+  }
+  }  /* end for h0_iter (H0_closure) */
+
+  if (pba->hqiv.hqiv_on != _TRUE_) {
+    pba->Omega0_de = 1. - (pba->Omega0_m + pba->Omega0_r + pba->Omega0_k);
+  }
 
   pba->Omega0_nfsm =  pba->Omega0_b;
   if (pba->has_cdm == _TRUE_)
@@ -1772,6 +2000,11 @@ int background_output_titles(
   class_store_columntitle(titles,"rel. alpha",pba->has_varconst);
   class_store_columntitle(titles,"rel. m_e",pba->has_varconst);
 
+  /* HQIV: horizon energy density and derived quantities */
+  class_store_columntitle(titles,"gamma_eff",pba->hqiv.hqiv_on);
+  class_store_columntitle(titles,"Omega_horizon",pba->hqiv.hqiv_on);
+  class_store_columntitle(titles,"G_eff/G0",pba->hqiv.hqiv_on);
+
   return _SUCCESS_;
 }
 
@@ -1841,6 +2074,31 @@ int background_output_data(
 
     class_store_double(dataptr,pvecback[pba->index_bg_varc_alpha],pba->has_varconst,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_varc_me],pba->has_varconst,storeidx);
+
+    /* HQIV: horizon energy density columns */
+    if (pba->hqiv.hqiv_on == _TRUE_) {
+      double a_here = pvecback[pba->index_bg_a];
+      double H_here = pvecback[pba->index_bg_H];
+      double a_rec = 1.0 / 1090.0;
+      double da_w  = 0.02 * a_rec;
+      double g_eff = pba->hqiv.gamma_hqiv * 0.5 * (1.0 + tanh((a_here - a_rec) / da_w));
+      double g_class = g_eff * pba->H0;
+      /* Ω_horizon = γ_eff_class H / (3 H²) = γ_eff_class / (3 H)
+       * Fractional energy from horizon term: 3H² - γH = 3ρ  → Ω_hz = γH/(3H²) */
+      double Omega_hz = (H_here > 0.0) ? g_class / (3.0 * H_here) : 0.0;
+      /* G_eff/G_0 from exact Friedmann relation with TODAY's γ_eff(z=0) = γ_theory
+       * (denominator always uses the z=0 value for consistent normalization) */
+      double g_class_today = pba->hqiv.gamma_hqiv * pba->H0;
+      double denom_G = pba->H0 * (3.0 * pba->H0 - g_class_today);
+      double G_ratio = 1.0;
+      if (denom_G > 0.0) {
+        double num_G = H_here * (3.0 * H_here - g_class);
+        G_ratio = (num_G > 0.0) ? num_G / denom_G : 0.0;
+      }
+      class_store_double(dataptr, g_eff, _TRUE_, storeidx);
+      class_store_double(dataptr, Omega_hz, _TRUE_, storeidx);
+      class_store_double(dataptr, G_ratio, _TRUE_, storeidx);
+    }
   }
 
   return _SUCCESS_;
@@ -1895,7 +2153,19 @@ int background_derivs(
   }
 
   dy[pba->index_bi_D] = y[pba->index_bi_D_prime]/a/H;
-  dy[pba->index_bi_D_prime] = -y[pba->index_bi_D_prime] + 1.5*a*rho_M*y[pba->index_bi_D]/H;
+  {
+    double G_eff_growth = 1.0;
+    if (pba->hqiv.hqiv_on == _TRUE_) {
+      /* G_eff/G_0 from the HQIV Friedmann equation, epoch-dependent via γ_eff(a).
+       * Pre-recomb: γ_eff ≈ 0, so G_eff/G_0 ≈ 1 (standard growth).
+       * Post-recomb: γ_eff = γ_theory, G_eff follows the exact formula.
+       * Capped to [0.2, 5.0] for numerical stability in the ODE integrator. */
+      G_eff_growth = pba->hqiv.G_eff_ratio;
+      if (G_eff_growth > 5.0) G_eff_growth = 5.0;
+      if (G_eff_growth < 0.2) G_eff_growth = 0.2;
+    }
+    dy[pba->index_bi_D_prime] = -y[pba->index_bi_D_prime] + 1.5*a*G_eff_growth*rho_M*y[pba->index_bi_D]/H;
+  }
 
   if (pba->has_dcdm == _TRUE_) {
     dy[pba->index_bi_rho_dcdm] = -3.*y[pba->index_bi_rho_dcdm] - pba->Gamma_dcdm/H*y[pba->index_bi_rho_dcdm];
@@ -2069,6 +2339,203 @@ int background_output_budget(
     }
     printf(" TOTAL                            Omega = %-15g , omega = %-15g \n",budget_radiation+budget_matter+budget_other,(budget_radiation+budget_matter+budget_other)*pba->h*pba->h);
     printf(" -------------------------------------------------------------------- \n");
+  }
+
+  return _SUCCESS_;
+}
+
+/**
+ * HQIV emergent lattice solve — fully parameter-free 4D object from Planck lattice.
+ *
+ * Reads a pre-computed table from Python forward_4d_evolution (columns: loga, rho_r_comov, rho_b_comov, T).
+ * Finds the slice where T == T0_cmb, rescales so a = 1 there ("today"), sets emergent H0, Omega_m, age, etc.
+ * Lattice table densities must be in CLASS units (same normalization as background_table).
+ */
+int hqiv_emergent_lattice_solve(struct precision *ppr, struct background *pba) {
+
+  FILE *f;
+  char line[512];
+  int i, n;
+  double a_final;
+  double *loga_table, *rho_r_table, *rho_b_table, *T_table;
+  double gamma_theory, a_rec, da_width;
+  double rho_today, H0_emergent;
+  double gamma_eff, gamma_class, rho_phys_r, rho_phys_b, rho_tot, a_here, H_here;
+  int idx_today;
+  double frac, loga_today, scale;
+
+  class_test(pba->hqiv_lattice_table[0] == '\0',
+             pba->error_message,
+             "hqiv_emergent requires hqiv_lattice_table file path");
+
+  f = fopen(pba->hqiv_lattice_table, "r");
+  class_test(f == NULL, pba->error_message, "Cannot open lattice table %s", pba->hqiv_lattice_table);
+
+  /* Count data lines (skip lines starting with #) */
+  n = 0;
+  while (fgets(line, sizeof(line), f) != NULL) {
+    if (line[0] == '#' || line[0] == '\n') continue;
+    n++;
+  }
+  rewind(f);
+
+  class_alloc(loga_table, n * sizeof(double), pba->error_message);
+  class_alloc(rho_r_table, n * sizeof(double), pba->error_message);
+  class_alloc(rho_b_table, n * sizeof(double), pba->error_message);
+  class_alloc(T_table, n * sizeof(double), pba->error_message);
+
+  i = 0;
+  while (fgets(line, sizeof(line), f) != NULL && i < n) {
+    if (line[0] == '#' || line[0] == '\n') continue;
+    if (sscanf(line, "%lf %lf %lf %lf",
+               &loga_table[i], &rho_r_table[i], &rho_b_table[i], &T_table[i]) == 4)
+      i++;
+  }
+  fclose(f);
+  n = i;
+
+  class_test(n < 2, pba->error_message, "Lattice table must have at least 2 rows");
+
+  /* Find slice where T == T0_cmb (linear interpolation) */
+  idx_today = 0;
+  for (i = 0; i < n - 1; i++) {
+    if (T_table[i] >= pba->T_cmb && T_table[i + 1] < pba->T_cmb) {
+      idx_today = i;
+      break;
+    }
+  }
+  if (T_table[n - 1] >= pba->T_cmb) idx_today = n - 1;
+
+  frac = (T_table[idx_today + 1] != T_table[idx_today])
+         ? (pba->T_cmb - T_table[idx_today]) / (T_table[idx_today + 1] - T_table[idx_today])
+         : 0.0;
+  if (idx_today >= n - 1) frac = 0.0;
+  loga_today = loga_table[idx_today] + frac * (loga_table[idx_today + 1] - loga_table[idx_today]);
+
+  a_final = exp(loga_today);
+  scale = 1.0 / a_final;
+  for (i = 0; i < n; i++)
+    loga_table[i] += log(scale);
+
+  /* Physical densities today (a = 1): rho_r_comov/a^4 = rho_r_comov, rho_b_comov/a^3 = rho_b_comov */
+  rho_today = rho_r_table[idx_today] + rho_b_table[idx_today];
+
+  /* Emergent H0 from modified Friedmann at a = 1: 3*H^2 - gamma_eff*H0*H = 3*rho, H = H0 => H0^2*(3 - gamma) = 3*rho */
+  gamma_theory = pba->hqiv.gamma_hqiv;
+  class_test(gamma_theory >= 3.0, pba->error_message, "hqiv_emergent requires gamma_hqiv < 3");
+  H0_emergent = sqrt(3.0 * rho_today / (3.0 - gamma_theory));
+  pba->H0 = H0_emergent;
+  pba->h = pba->H0 * _Mpc_over_m_ / (1.e5 / _c_);  /* h = H0 in 100 km/s/Mpc units */
+
+  /* Allocate CLASS tables */
+  pba->bt_size = n;
+  class_alloc(pba->tau_table, pba->bt_size * sizeof(double), pba->error_message);
+  class_alloc(pba->z_table, pba->bt_size * sizeof(double), pba->error_message);
+  class_alloc(pba->loga_table, pba->bt_size * sizeof(double), pba->error_message);
+  class_alloc(pba->d2tau_dz2_table, pba->bt_size * sizeof(double), pba->error_message);
+  class_alloc(pba->d2z_dtau2_table, pba->bt_size * sizeof(double), pba->error_message);
+  class_alloc(pba->background_table, pba->bt_size * pba->bg_size * sizeof(double), pba->error_message);
+  class_alloc(pba->d2background_dloga2_table, pba->bt_size * pba->bg_size * sizeof(double), pba->error_message);
+
+  a_rec = 1.0 / 1090.0;
+  da_width = 0.02 * a_rec;
+
+  /* Fill tables: loga, z, tau (integrated), and background_table */
+  pba->tau_table[0] = 0.0;
+  for (i = 0; i < n; i++) {
+    pba->loga_table[i] = loga_table[i];
+    a_here = exp(loga_table[i]);
+    pba->z_table[i] = exp(-loga_table[i]) - 1.0;
+
+    rho_phys_r = rho_r_table[i] / (a_here * a_here * a_here * a_here);
+    rho_phys_b = rho_b_table[i] / (a_here * a_here * a_here);
+    rho_tot = rho_phys_r + rho_phys_b;
+
+    gamma_eff = gamma_theory * 0.5 * (1.0 + tanh((a_here - a_rec) / da_width));
+    gamma_class = gamma_eff * pba->H0;
+    H_here = (gamma_class / 3.0 + sqrt((gamma_class / 3.0) * (gamma_class / 3.0) + 4.0 * rho_tot)) / 2.0;
+
+    if (i > 0) {
+      double a_prev = exp(loga_table[i - 1]);
+      double H_prev = pba->background_table[(i - 1) * pba->bg_size + pba->index_bg_H];
+      pba->tau_table[i] = pba->tau_table[i - 1]
+                         + 0.5 * (1.0 / (a_prev * H_prev) + 1.0 / (a_here * H_here))
+                           * (loga_table[i] - loga_table[i - 1]);
+    }
+
+    pba->background_table[i * pba->bg_size + pba->index_bg_a] = a_here;
+    pba->background_table[i * pba->bg_size + pba->index_bg_rho_g] = rho_phys_r;
+    pba->background_table[i * pba->bg_size + pba->index_bg_rho_b] = rho_phys_b;
+    pba->background_table[i * pba->bg_size + pba->index_bg_H] = H_here;
+    pba->background_table[i * pba->bg_size + pba->index_bg_H_prime] = 0.0;  /* spline will approximate */
+    if (pba->has_cdm == _TRUE_)
+      pba->background_table[i * pba->bg_size + pba->index_bg_rho_cdm] = 0.0;
+    if (pba->has_lambda == _TRUE_)
+      pba->background_table[i * pba->bg_size + pba->index_bg_rho_lambda] = 0.0;
+    pba->background_table[i * pba->bg_size + pba->index_bg_rho_tot] = rho_tot;
+    pba->background_table[i * pba->bg_size + pba->index_bg_p_tot] = rho_phys_r / 3.0;
+    pba->background_table[i * pba->bg_size + pba->index_bg_p_tot_prime] = -(4.0 / 3.0) * rho_phys_r * a_here * H_here;
+    pba->background_table[i * pba->bg_size + pba->index_bg_rho_crit] = H_here * H_here;
+    pba->background_table[i * pba->bg_size + pba->index_bg_Omega_r] = rho_phys_r / (H_here * H_here);
+    pba->background_table[i * pba->bg_size + pba->index_bg_Omega_m] = rho_phys_b / (H_here * H_here);
+    pba->background_table[i * pba->bg_size + pba->index_bg_D] = a_here;
+    pba->background_table[i * pba->bg_size + pba->index_bg_f] = 1.0;
+    pba->background_table[i * pba->bg_size + pba->index_bg_time] = 0.0;  /* filled below */
+    pba->background_table[i * pba->bg_size + pba->index_bg_rs] = 0.0;
+  }
+
+  /* Proper time integration */
+  for (i = 1; i < n; i++) {
+    double H_prev = pba->background_table[(i - 1) * pba->bg_size + pba->index_bg_H];
+    double H_curr = pba->background_table[i * pba->bg_size + pba->index_bg_H];
+    pba->background_table[i * pba->bg_size + pba->index_bg_time] =
+      pba->background_table[(i - 1) * pba->bg_size + pba->index_bg_time]
+      + 0.5 * (1.0 / H_prev + 1.0 / H_curr) * (pba->loga_table[i] - pba->loga_table[i - 1]);
+  }
+
+  pba->age = pba->background_table[(n - 1) * pba->bg_size + pba->index_bg_time] / _Gyr_over_Mpc_;
+  pba->conformal_age = pba->tau_table[n - 1];
+
+  /* Conformal/angular/luminosity distances at each row */
+  for (i = 0; i < n; i++) {
+    double conformal_distance = pba->conformal_age - pba->tau_table[i];
+    double comoving_radius = conformal_distance;  /* K = 0 */
+    pba->background_table[i * pba->bg_size + pba->index_bg_conf_distance] = conformal_distance;
+    pba->background_table[i * pba->bg_size + pba->index_bg_ang_distance] = comoving_radius / (1.0 + pba->z_table[i]);
+    pba->background_table[i * pba->bg_size + pba->index_bg_lum_distance] = comoving_radius * (1.0 + pba->z_table[i]);
+  }
+
+  class_call(array_spline_table_lines(pba->z_table, pba->bt_size, pba->tau_table, 1,
+                                      pba->d2tau_dz2_table, _SPLINE_EST_DERIV_, pba->error_message),
+             pba->error_message, pba->error_message);
+  class_call(array_spline_table_lines(pba->tau_table, pba->bt_size, pba->z_table, 1,
+                                      pba->d2z_dtau2_table, _SPLINE_EST_DERIV_, pba->error_message),
+             pba->error_message, pba->error_message);
+  class_call(array_spline_table_lines(pba->loga_table, pba->bt_size, pba->background_table, pba->bg_size,
+                                      pba->d2background_dloga2_table, _SPLINE_EST_DERIV_, pba->error_message),
+             pba->error_message, pba->error_message);
+
+  pba->Omega0_m = pba->background_table[(n - 1) * pba->bg_size + pba->index_bg_Omega_m];
+  pba->Omega0_r = pba->background_table[(n - 1) * pba->bg_size + pba->index_bg_Omega_r];
+  pba->Omega0_b = pba->Omega0_m;
+  pba->Omega0_g = pba->Omega0_r;
+  pba->Omega0_ur = 0.0;
+  pba->Omega0_de = gamma_theory / 3.0;  /* horizon term replaces dark energy */
+  pba->Omega0_k = 0.0;
+  pba->K = 0.0;
+  pba->sgnK = 0;
+
+  free(loga_table);
+  free(rho_r_table);
+  free(rho_b_table);
+  free(T_table);
+
+  if (pba->background_verbose > 0) {
+    printf(" -> HQIV emergent lattice mode activated\n");
+    printf(" -> T0 = %.4f K defines today (a=1)\n", pba->T_cmb);
+    printf(" -> Emergent H0 = %.4f km/s/Mpc\n", pba->H0 * 299792.458);
+    printf(" -> Emergent Omega_m (baryon-only) = %.6f\n", pba->Omega0_m);
+    printf(" -> Emergent global age = %.2f Gyr\n", pba->age);
   }
 
   return _SUCCESS_;

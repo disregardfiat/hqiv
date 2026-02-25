@@ -2332,28 +2332,25 @@ int input_read_parameters_general(struct file_content * pfc,
   class_call(parser_read_string(pfc,"HQIV",&string1,&flag1,errmsg),
              errmsg,
              errmsg);
-  /* Debug: print what we read */
-  printf("DEBUG: HQIV flag1 = %d, string1 = '%s'\n", flag1, flag1==_TRUE_ ? string1 : "not read");
-  /* Complete set of parameters */
   if (flag1 == _TRUE_){
     if ((strstr(string1,"yes") != NULL) || (strstr(string1,"y") != NULL) || 
         (strstr(string1,"Y") != NULL) || (strstr(string1,"true") != NULL) ||
         (strstr(string1,"TRUE") != NULL)) {
       pba->hqiv.hqiv_on = _TRUE_;
-      printf("DEBUG: HQIV enabled!\n");
 
       /* HQIV: enforce pure baryon-only cosmology (no CDM, no Lambda) */
       pba->Omega0_cdm = 0.0;
       pba->Omega0_lambda = 0.0;
       pba->Omega0_fld = 0.0;
-      printf("HQIV MODE: forcing baryons-only (Omega_cdm = 0, Omega_lambda = 0)\n");
 
       /* Read HQIV parameters with defaults from Paper Table 1 */
       class_read_double("HQIV_gamma",pba->hqiv.gamma_hqiv);
       class_read_double("HQIV_alpha",pba->hqiv.alpha_hqiv);
       class_read_double("HQIV_chi",pba->hqiv.chi_hqiv);
       class_read_double("HQIV_fmin",pba->hqiv.fmin_hqiv);
-      
+      class_read_int("HQIV_alpha_dynamic",pba->hqiv.alpha_dynamic);
+      class_read_int("HQIV_H0_closure",pba->hqiv.H0_closure);
+
       /* Initialize HQIV derived quantities */
       pba->hqiv.phi_horizon = 0.0;
       pba->hqiv.G_eff_ratio = 1.0;
@@ -2370,6 +2367,16 @@ int input_read_parameters_general(struct file_content * pfc,
         printf("    f_min = %.4f (inertia floor)\n", pba->hqiv.fmin_hqiv);
       }
     }
+  }
+
+  /** HQIV emergent lattice mode: cosmology from pre-computed lattice table only (T_cmb defines today) */
+  class_read_int("hqiv_emergent", pba->hqiv_emergent);
+  if (pba->hqiv_emergent == _TRUE_) {
+    class_read_string("hqiv_lattice_table", pba->hqiv_lattice_table);
+    pba->hqiv.hqiv_on = _TRUE_;
+    pba->Omega0_cdm = 0.0;
+    pba->Omega0_lambda = 0.0;
+    pba->Omega0_fld = 0.0;
   }
 
   return _SUCCESS_;
@@ -3286,18 +3293,22 @@ int input_read_parameters_species(struct file_content * pfc,
   }
   /* Step 2 */
   if (flag1 == _FALSE_) {
-    /* Fill with Lambda */
-    if (pba->hqiv.hqiv_on == _TRUE_) { 
-      /* HQIV provides effective dark energy through modified Friedmann equation.
-       * No explicit Lambda or fluid needed - the horizon term provides acceleration. */
-      pba->Omega0_lambda = 0.; 
+    if (pba->hqiv.hqiv_on == _TRUE_) {
+      /* HQIV: no cosmological constant.  The "missing energy" in the Friedmann
+       * budget is supplied by the γH horizon term, not by Λ.
+       * Setting Omega0_lambda = 0 and has_lambda = FALSE ensures CLASS does not
+       * add any Λ energy density to rho_tot. */
+      pba->Omega0_lambda = 0.0;
+      pba->has_lambda = _FALSE_;
       pba->Omega0_fld = 0.;
-      /* The budget equation is satisfied by the HQIV omega_eff term in background.c */
-    } else { 
-      pba->Omega0_lambda= 1. - pba->Omega0_k - Omega_tot; 
-    }
-    if (input_verbose > 0){
-      printf(" -> matched budget equations by adjusting Omega_Lambda = %g\n",pba->Omega0_lambda);
+      if (input_verbose > 0) {
+        printf(" -> HQIV: Omega_Lambda = 0 (horizon term provides closure)\n");
+      }
+    } else {
+      pba->Omega0_lambda= 1. - pba->Omega0_k - Omega_tot;
+      if (input_verbose > 0){
+        printf(" -> matched budget equations by adjusting Omega_Lambda = %g\n",pba->Omega0_lambda);
+      }
     }
   }
   else if (flag2 == _FALSE_) {
@@ -5871,6 +5882,8 @@ int input_default_params(struct background *pba,
   pba->hqiv.alpha_hqiv = 0.0;      /* Varying G exponent (0 = constant G) */
   pba->hqiv.chi_hqiv = 1.0;        /* Light-cone average scaling */
   pba->hqiv.fmin_hqiv = 0.0;       /* Inertia floor */
+  pba->hqiv.alpha_dynamic = _FALSE_;
+  pba->hqiv.H0_closure = _FALSE_;
   /* Derived quantities */
   pba->hqiv.phi_horizon = 0.0;
   pba->hqiv.G_eff_ratio = 1.0;
@@ -5878,6 +5891,10 @@ int input_default_params(struct background *pba,
   pba->hqiv.age_hqiv = 0.0;
   pba->hqiv.vorticity_growth_exponent = 0.0;
   pba->hqiv.raw_acoustic_scale = 0.0;
+
+  /** HQIV emergent lattice mode: default off, no table path */
+  pba->hqiv_emergent = _FALSE_;
+  pba->hqiv_lattice_table[0] = '\0';
 
   /**
    * Default to input_read_parameters_species
@@ -5976,7 +5993,14 @@ int input_default_params(struct background *pba,
   /** 9) Dark energy contributions */
   pba->Omega0_fld = 0.;
   pba->Omega0_scf = 0.;
-  if (pba->hqiv.hqiv_on == _TRUE_) { pba->Omega0_lambda = 0.; } else { pba->Omega0_lambda = 1.-pba->Omega0_k-pba->Omega0_g-pba->Omega0_ur-pba->Omega0_b-pba->Omega0_cdm-pba->Omega0_ncdm_tot-pba->Omega0_dcdmdr - pba->Omega0_idr -pba->Omega0_idm; }
+  if (pba->hqiv.hqiv_on == _TRUE_) {
+    /* HQIV: no Lambda — the γH horizon term provides the closure energy.
+     * Setting Omega0_lambda = 0 and has_lambda = FALSE. */
+    pba->Omega0_lambda = 0.0;
+    pba->has_lambda = _FALSE_;
+  } else {
+    pba->Omega0_lambda = 1.-pba->Omega0_k-pba->Omega0_g-pba->Omega0_ur-pba->Omega0_b-pba->Omega0_cdm-pba->Omega0_ncdm_tot-pba->Omega0_dcdmdr - pba->Omega0_idr -pba->Omega0_idm;
+  }
   /** 8.a) Omega fluid */
   /** 8.a.1) PPF approximation */
   pba->use_ppf = _TRUE_;

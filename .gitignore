@@ -18,6 +18,13 @@ class_hqiv/
 class_integration/hqiv_Ha.txt
 *.so
 
+# Simulation artifacts
+*.npz
+*.dat
+*.npy
+*.h5
+*.hdf5
+
 # Work product / internal
 *.log
 run.log

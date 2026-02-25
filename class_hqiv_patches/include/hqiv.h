@@ -51,6 +51,9 @@ struct hqiv_parameters {
   double fmin_hqiv;        /**< Thermodynamic floor from informational-energy saturation
                                 Default: 0.01 */
   
+  short alpha_dynamic;     /**< If _TRUE_, α = χφ/6 at each step (f = χ/(χ+1)); no input alpha */
+  short H0_closure;        /**< If _TRUE_, shoot for h so H(a=1) = H0 (no input h) */
+  
   /** @name - Derived quantities computed during evolution */
   
   double phi_horizon;      /**< Horizon field φ = cH (in 1/s units, computed at each step) */
@@ -155,6 +158,9 @@ extern "C" {
                  double alpha,
                  double phi,
                  double gamma,
+                 double gamma0,
+                 double K_over_a2,
+                 double K,
                  double * G_eff_ratio
                  );
   

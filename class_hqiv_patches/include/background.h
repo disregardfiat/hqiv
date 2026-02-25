@@ -335,6 +335,20 @@ struct background
 
   struct hqiv_parameters hqiv; /**< HQIV parameters and derived quantities */
 
+  /** @name - HQIV emergent lattice mode (fully parameter-free 4D object) */
+
+  //@{
+
+  int hqiv_emergent;                    /**< 0 = standard input params, 1 = fully emergent from lattice */
+  char hqiv_lattice_table[256];         /**< path to table from Python forward_4d_evolution (loga rho_r_comov rho_b_comov T) */
+  int lattice_table_size;               /**< number of rows in lattice table */
+  double *lattice_loga;                 /**< log(a) from table (internal use) */
+  double *lattice_rho_r_comov;          /**< comoving radiation density from table */
+  double *lattice_rho_b_comov;          /**< comoving baryon density from table */
+  double *lattice_T;                    /**< temperature from table */
+
+  //@}
+
 };
 
 
@@ -503,6 +517,11 @@ extern "C" {
                        struct precision *ppr,
                        struct background *pba
                        );
+
+  int hqiv_emergent_lattice_solve(
+                                  struct precision *ppr,
+                                  struct background *pba
+                                  );
 
   int background_initial_conditions(
                                     struct precision *ppr,

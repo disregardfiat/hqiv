@@ -6561,24 +6561,12 @@ int perturbations_einstein(
              ppt->error_message,
              ppt->error_message);
 
-  /** - --> HQIV: Poisson with G_eff and horizon correction (Paper Section 6, Eq. 14)
-      Apply G_eff scaling; horizon_factor smooths sub-horizon modes.
-      Applied only at tau > tau_rec*0.5 to avoid early-time stiffness. */
-  if (_scalars_ && pba->hqiv.hqiv_on == _TRUE_ && tau > pth->tau_rec * 0.5) {
-    double H_now = ppw->pvecback[pba->index_bg_H];
-    double G_eff_ratio;
-    class_call(hqiv_G_eff(H_now, pba->H0, pba->hqiv.alpha_hqiv, H_now,
-                          pba->hqiv.gamma_hqiv, &G_eff_ratio),
-               ppt->error_message, ppt->error_message);
-    /* Cap G_eff to avoid stiffness */
-    G_eff_ratio = (G_eff_ratio > 5.0) ? 5.0 : ((G_eff_ratio < 0.2) ? 0.2 : G_eff_ratio);
-    double k2_horizon = pow(2.0 * pba->hqiv.gamma_hqiv * H_now, 2);
-    double horizon_factor = k2 / (k2 + k2_horizon + 1e-60);
-    ppw->delta_rho *= G_eff_ratio * horizon_factor;
-    ppw->rho_plus_p_theta *= G_eff_ratio;
-    ppw->delta_p *= G_eff_ratio;
-    ppw->rho_plus_p_shear *= G_eff_ratio;
-  }
+  /* HQIV: G_eff(z) is NOT applied by rescaling the stress-energy tensor.
+   * Rescaling delta_rho / rho_plus_p_theta / etc. here introduces a
+   * positive-feedback instability in Newtonian gauge (amplified rho_plus_p_theta
+   * → phi' → phi → psi → growth → sigma8 → 10^6) while synchronous gauge is
+   * unaffected, breaking gauge consistency.
+   * G_eff enters perturbations correctly through the baryon inertia term below. */
 
   /** - for scalar modes: */
 
@@ -6601,11 +6589,15 @@ int perturbations_einstein(
          second equation below (credits to Guido Walter Pettinari). */
 
       /* equation for psi (Newtonian-gauge lapse potential).
-       * Paper metric ansatz (Section 4, Appendix A): ds² = -(1+2Φ+φt/c)c²dt² + a²(1-2Φ)δij dx^i dx^j.
-       * So full lapse = 1+2Φ+φt/c; in standard notation 1+2Ψ, hence Ψ = Φ + φt/(2c).
-       * Currently we use standard GR relation only; the HQIV lapse correction φt/(2c) is not yet added
-       * (would require cosmic time t(τ) and horizon field φ; expected to be small at first order). */
-      ppw->pvecmetric[ppw->index_mt_psi] = y[ppw->pv->index_pt_phi] - 4.5 * (a2/k2) * ppw->rho_plus_p_shear;
+       * Standard Newtonian-gauge: Ψ = Φ - (9/2)(a²/k²)(ρ+p)σ.
+       * HQIV lapse: paper metric N = 1+Φ+φt/c has a BACKGROUND piece φt/c = H·t which
+       * grows to ~5 today and cannot be treated perturbatively (Ht >> 1 at late times).
+       * The correct effect is captured at background level through the modified Friedmann
+       * equation (modified H, conformal age, sound horizon ratio).  Adding it as a
+       * multiplicative factor on Φ amplifies the matter transfer function by ~3.5x and
+       * drives sigma8 to ~10^6.  The lapse is therefore NOT added here. */
+      ppw->pvecmetric[ppw->index_mt_psi] = y[ppw->pv->index_pt_phi]
+        - 4.5 * (a2/k2) * ppw->rho_plus_p_shear;
 
       /* equation for phi' */
       ppw->pvecmetric[ppw->index_mt_phi_prime] = -a_prime_over_a * ppw->pvecmetric[ppw->index_mt_psi] + 1.5 * (a2/k2) * ppw->rho_plus_p_theta;
@@ -6749,8 +6741,9 @@ int perturbations_einstein(
       if (pba->hqiv.hqiv_on == _TRUE_) {
         double vorticity_source = 0.0;
         double phi = ppw->pvecback[pba->index_bg_H];  /* φ = H in FLRW (CLASS units) */
-        double denom = pba->hqiv.alpha_hqiv + phi / 6.0;  /* Paper Eq. 11: f = α/(α+φ/6) */
-        double df_dphi = (denom * denom > 1e-60) ? (-pba->hqiv.alpha_hqiv / (6.0 * denom * denom)) : 0.0;
+        double alpha_eff = (pba->hqiv.alpha_dynamic == _TRUE_) ? (pba->hqiv.chi_hqiv * phi / 6.0) : pba->hqiv.alpha_hqiv;
+        double denom = alpha_eff + phi / 6.0;  /* Paper Eq. 11: f = α/(α+φ/6) */
+        double df_dphi = (denom * denom > 1e-60) ? (-alpha_eff / (6.0 * denom * denom)) : 0.0;
         /* Window: 0 in plasma (tau << tau_rec), smooth ramp during recombination, 1 after */
         double tau_rec = pth->tau_rec;
         double delta_tau = 0.25 * tau_rec;  /* smearing width during recombination */
@@ -6773,8 +6766,9 @@ int perturbations_einstein(
       if (pba->hqiv.hqiv_on == _TRUE_) {
         double vorticity_source = 0.0;
         double phi = ppw->pvecback[pba->index_bg_H];
-        double denom = pba->hqiv.alpha_hqiv + phi / 6.0;  /* Paper Eq. 11: no χ in f formula */
-        double df_dphi = (denom * denom > 1e-60) ? (-pba->hqiv.alpha_hqiv / (6.0 * denom * denom)) : 0.0;
+        double alpha_eff = (pba->hqiv.alpha_dynamic == _TRUE_) ? (pba->hqiv.chi_hqiv * phi / 6.0) : pba->hqiv.alpha_hqiv;
+        double denom = alpha_eff + phi / 6.0;  /* Paper Eq. 11: no χ in f formula */
+        double df_dphi = (denom * denom > 1e-60) ? (-alpha_eff / (6.0 * denom * denom)) : 0.0;
         double tau_rec = pth->tau_rec;
         double delta_tau = 0.25 * tau_rec;  /* smearing during recombination (over/under-densities) */
         double window = 0.5 * (1.0 + tanh((tau - tau_rec) / (delta_tau + 1e-30)));
@@ -9059,21 +9053,34 @@ int perturbations_derivs(double tau,
       metric_ufa_class = -6.*pvecmetric[ppw->index_mt_phi_prime];
     }
 
-    /** - --> HQIV: apply reduced inertia ONLY to baryons (Paper Section 6, Eq. 12)
-        Euler: v̇ + Hv = -∇Φ/f(α,φ) → metric_euler_baryons = metric_euler / f_inertia
-        Full inertia reduction (f(α,φ) from paper); f_min floor only (≈0.01) */
-    if (pba->hqiv.hqiv_on == _TRUE_ && pba->Omega0_cdm < 1e-10) {
-      double phi_now = pvecback[pba->index_bg_H];  /* φ = H in CLASS units */
-      class_call(hqiv_inertia_factor(pba->hqiv.alpha_hqiv, phi_now,
-                                      pba->hqiv.chi_hqiv, pba->hqiv.fmin_hqiv, &f_inertia),
+    /* HQIV inertia modification — applied only AFTER recombination, Newtonian gauge only.
+     *
+     * Physical argument: before recombination, baryons and photons are tightly coupled
+     * into a single relativistic plasma (BOA/BAO phase).  In this regime there is no
+     * coherent gravitational free-fall, so the horizon-field inertia correction
+     * f(α,φ) is inoperative.  After recombination, baryon overdensities decouple from
+     * the radiation, begin to collapse, and the reduced effective inertia
+     * f = α/(α + φ/6) < 1 accelerates their infall (paper Section 6, Eq. 12).
+     * The χ chiral term subsequently generates angular momentum in collapsing filaments,
+     * producing co-rotating galaxies — a key HQIV observational prediction.
+     *
+     * Gauge note: in synchronous gauge without CDM, metric_euler ≡ 0 (the baryon rest
+     * frame IS the gauge frame, so explicit gravitational force vanishes from θ_b').
+     * The inertia factor therefore has no natural entry point in synchronous gauge; the
+     * correct physical gauge for this effect is Newtonian gauge. */
+    if (pba->hqiv.hqiv_on == _TRUE_ &&
+        ppt->gauge == newtonian &&
+        tau > pth->tau_rec) {
+      double phi_now = pvecback[pba->index_bg_H];  /* φ = cH in CLASS units */
+      double alpha_eff = (pba->hqiv.alpha_dynamic == _TRUE_) ? (pba->hqiv.chi_hqiv * phi_now / 6.0) : pba->hqiv.alpha_hqiv;
+      class_call(hqiv_inertia_factor(alpha_eff, phi_now,
+                                     pba->hqiv.chi_hqiv, pba->hqiv.fmin_hqiv, &f_inertia),
                  ppt->error_message, ppt->error_message);
       metric_euler_baryons = (f_inertia > 1e-10) ? (metric_euler / f_inertia) : metric_euler;
     } else {
       f_inertia = 1.0;
       metric_euler_baryons = metric_euler;
     }
-
-    /* HQIV: f_inertia and G_eff available for baryon Euler and Poisson */
 
     /** - --> (d) if some approximation schemes are turned on, enforce a few y[] values computed in perturbations_einstein */
 

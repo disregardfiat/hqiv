@@ -1,0 +1,49 @@
+DEBUG: HQIV flag1 = 1, string1 = 'yes'
+DEBUG: HQIV enabled!
+HQIV MODE: forcing baryons-only (Omega_cdm = 0, Omega_lambda = 0)
+Running CLASS version v3.3.4
+Computing background
+ -> HQIV cosmology enabled:
+    gamma = 0.3600
+    alpha = 0.6000
+    chi = 0.1720
+Chose ndf15 as generic_evolver
+ -> age = 19.986606 Gyr
+ -> conformal age = 26315.682726 Mpc
+ -> N_eff = 3.044 (summed over all species that are non-relativistic at early times) 
+ -> radiation/matter equality at z = 596.716321
+    corresponding to conformal time = 642.473952 Mpc
+ ---------------------------- Budget equation ----------------------- 
+ ---> Nonrelativistic Species 
+-> Bayrons                        Omega = 0.0466571       , omega = 0.025          
+-> Cold Dark Matter               Omega = 1e-10           , omega = 5.35824e-11    
+ ---> Relativistic Species 
+-> Photons                        Omega = 4.61528e-05     , omega = 2.47298e-05    
+-> Ultra-relativistic relics      Omega = 3.19061e-05     , omega = 1.70961e-05    
+ ---> Other Content 
+-> Cosmological Constant          Omega = 0.833265        , omega = 0.446483       
+ ---> Total budgets 
+ Radiation                        Omega = 7.8059e-05      , omega = 4.18259e-05     
+ Non-relativistic                 Omega = 0.0466571       , omega = 0.025           
+ Other Content                    Omega = 0.833265        , omega = 0.446483        
+ TOTAL                            Omega = 0.88            , omega = 0.471525        
+ -------------------------------------------------------------------- 
+Computing thermodynamics using HyRec 2020
+ -> with primordial helium mass fraction Y_He = 0.2463
+HQIV DIAGNOSTICS: rs_rec = 192.747 Mpc, z_rec = 1076.54, D_A(z_rec) = 24.067 Mpc, tau_rec = 382.925 Mpc
+ -> recombination (maximum of visibility function) at z = 1076.543719
+    corresponding to conformal time = 382.924671 Mpc
+    with comoving sound horizon = 192.746938 Mpc
+    angular diameter distance = 24.066548 Mpc
+    sound horizon angle 100*theta_s = 0.743257
+    Thomson optical depth crosses one at z_* = 1069.369646
+    giving an angle 100*theta_* = 0.747262
+ -> baryon drag stops at z = 1054.409633
+    corresponding to conformal time = 390.146846 Mpc
+    with comoving sound horizon rs = 195.934676 Mpc
+ -> reionization at z = 4.417610
+    corresponding to conformal time = 11362.062372 Mpc
+Computing sources
+Computing linear Fourier spectra.
+ -> sigma8=0.762907 for total matter (computed till k = 1.56943 h/Mpc)
+No non-linear spectra requested. Nonlinear calculations skipped.
