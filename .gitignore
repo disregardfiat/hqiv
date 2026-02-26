@@ -4,6 +4,7 @@ paper/*.aux paper/*.bbl paper/*.blg paper/*.log paper/*.out paper/*.synctex.gz p
 # Python
 sandbox/.venv/
 class_integration/.venv/
+horizon_modes/python/.venv/
 venv/
 __pycache__/
 *.py[cod]

@@ -628,6 +628,7 @@ class HQIVBulletSimulation:
             velocities=self.velocities,
             masses=self.masses,
             species=self.species,
+            a=self.a_current,
         )
         
         # Save history

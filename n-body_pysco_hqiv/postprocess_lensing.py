@@ -434,7 +434,17 @@ class LensingPostprocessor:
         
         positions = data['positions']
         species = data['species']
-        a = float(data['a'])
+        if 'a' in data:
+            a = float(data['a'])
+        else:
+            # final_particles.npz from older runs may lack 'a'; use history or default
+            hist_path = self.output_dir / 'simulation_history.npz'
+            if hist_path.exists():
+                hist = np.load(hist_path, allow_pickle=True)
+                a = float(hist['a'][-1]) if 'a' in hist else 1.0
+            else:
+                a = 1.0
+            print(f"  (scale factor a={a:.4f} from history/default)")
         
         # Separate gas and galaxies
         gas_mask = species == 'gas'
@@ -579,6 +589,8 @@ def main():
     parser = argparse.ArgumentParser(description='HQIV Lensing Post-processing')
     parser.add_argument('--output', type=str, default='./output/',
                         help='Output directory with simulation data')
+    parser.add_argument('--box', type=float, default=None,
+                        help='Box size [Mpc] (overrides config; use same as run_bullet --box)')
     parser.add_argument('--snapshot', type=str, default='final_particles.npz',
                         help='Snapshot file to process')
     parser.add_argument('--method', type=str, default='born',
@@ -589,6 +601,9 @@ def main():
     
     # Create postprocessor
     processor = LensingPostprocessor(args.output)
+    if args.box is not None:
+        processor.box_size = float(args.box)
+        print(f"Using box size from command line: {processor.box_size} Mpc")
     
     # Process
     results = processor.process(args.snapshot, method=args.method)

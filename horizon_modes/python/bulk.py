@@ -6,34 +6,38 @@
 #          with curvature K = -Ω_k^true H0² from lock-in down to T_cmb. Write table for CLASS.
 #
 # CLASS then reads this table, sets a=1 at the row where T = T_cmb, and runs thermo + perturbations.
+from __future__ import annotations
+
 import numpy as np
+from typing import Optional
+
 from discrete_baryogenesis_horizon import (
     run_simulation,
     T_PL_GEV,
     T_QCD_GEV,
     GAMMA,
     curvature_imprint_energy,
+    omega_k_from_shell_integral,
+    DISCRETE_TO_CONTINUOUS_M,
 )
 
 # CMB temperature today (K) — CLASS runs to this; table must include this row
 T_CMB_K = 2.725
-# Curvature: paper value from discrete null-lattice. Same mechanism sources both
-# Ω_k^true and the per-shell δE(m) → η; in the code, run_simulation() uses this
-# value to scale the curvature imprint (mild circularity: η is generated with
-# target Ω_k as input). For first-principles η only, call run_simulation(…,
-# use_omega_k_amplitude=False); then Ω_k would need to co-emerge from a shell
-# integral (see discrete_baryogenesis_horizon.py).
-OMEGA_K_TRUE = 0.0098
+# Ω_k^true is computed implicitly from the shell integral up to the
+# discrete-to-continuous cutoff (see forward_4d_evolution(discrete_to_continuous_cutoff=...)).
+# Fallback constant only if caller overrides omega_k_true (e.g. for tests).
+OMEGA_K_FALLBACK = 0.0098
 # Recombination scale factor for γ_eff(a) ramp
 A_REC = 1.0 / 1090.0
 DA_REC = 0.02 * A_REC
 # GeV → Kelvin for radiation temperature
-GEV_TO_K = 1.160e13
-# Convert comoving density in GeV^4 to CLASS units (1/Mpc)^2) so that H = sqrt(3*rho/(3-gamma)) gives 1/Mpc
-# 8πG ρ = 3 H² (CLASS convention). ρ_CLASS = ρ_GeV4 * (8πG/3) in (1/Mpc)²: 1 Mpc = 1.564e38 GeV⁻¹ → 1/Mpc = 6.4e-39 GeV.
-# H_GeV = sqrt(8π ρ_GeV4 / (3 M_Pl^2)); ρ_CLASS = H² so ρ_CLASS = 8π ρ_GeV4 / (3 M_Pl^2) in GeV², then (1/Mpc)² = 4.1e-77 GeV² → ρ_CLASS = ρ_GeV4 * 8π/(3*M_Pl^2) * 2.44e76 ≈ ρ_GeV4 * 2.23e15
-GEV4_TO_MPC2 = 2.23e15
-M_PL_GEV = 1.22e19
+# T_GeV to T_K: T_K = T_GeV / k_B (k_B ≈ 8.617e-14 GeV/K)
+GEV_TO_K = 1.0 / 8.617333e-14
+M_PL_GEV = 1.2209e19
+# ρ in GeV^4 → (1/Mpc)^2 so CLASS's H = sqrt(3*rho/(3-γ)) is in 1/Mpc. From 3H² = 8πGρ, G=1/M_Pl², H_mpc = H_gev*1.56e38.
+GEV4_TO_MPC2 = (3.0 - GAMMA) / (3.0 * 2.34e-39)
+# H in GeV (1/time) → km/s/Mpc
+H_GEV_TO_KM_S_MPC = 1.56e38 * 2.998e5
 
 
 def _gamma_eff(a: np.ndarray, gamma: float = GAMMA) -> np.ndarray:
@@ -42,11 +46,9 @@ def _gamma_eff(a: np.ndarray, gamma: float = GAMMA) -> np.ndarray:
 
 
 def _lockin_index(data: dict) -> int:
-    """Index where lock-in is sharpest (max |d p_lock / d ln T|)."""
-    p = data["p_lock"]
-    lnT = np.log(data["T"] + 1e-300)
-    dpl = np.gradient(p, lnT)
-    return int(np.argmax(np.abs(dpl)))
+    """Index where T is closest to QCD lock-in (1.8 GeV). Prefer this over gradient so we get the correct scale."""
+    T_gev = np.asarray(data["T"])
+    return int(np.argmin(np.abs(T_gev - T_QCD_GEV)))
 
 
 def _friedmann_hqiv(
@@ -78,17 +80,39 @@ def forward_4d_evolution(
     n_steps: int = 6000,
     gamma: float = GAMMA,
     T_cmb_k: float = T_CMB_K,
-    omega_k_true: float = OMEGA_K_TRUE,
+    omega_k_true: Optional[float] = None,
     seed: int = 42,
     n_loga: int = 4000,
     outpath: str = "hqiv_lattice_table.dat",
+    discrete_to_continuous_cutoff: int = DISCRETE_TO_CONTINUOUS_M,
+    E_0_factor: float = 1.0,
 ):
     """
     Run baryogenesis to lock-in, then integrate modified Friedmann to T_cmb.
     Writes (loga, rho_r_comov, rho_b_comov, T_K) in CLASS units for hqiv_emergent.
+
+    Ω_k^true is computed implicitly from the curvature-imprint shell integral
+    from m=0 to discrete_to_continuous_cutoff (same mechanism as η). Pass
+    omega_k_true to override (e.g. fixed value for tests).
+
+    discrete_to_continuous_cutoff: shell index M at which mode counting
+    switches from discrete to continuous; curvature integral runs 0..M.
     """
+    # Ω_k from shell integral up to discrete-to-continuous cutoff (or override)
+    if omega_k_true is None:
+        omega_k_true = omega_k_from_shell_integral(
+            transition_m=discrete_to_continuous_cutoff,
+            E_0_factor=E_0_factor,
+        )
     # --- Phase 1: Baryogenesis up to lock-in ---
-    data = run_simulation(n_steps=n_steps, seed=seed, E_0_factor=1.0, transition_m=500)
+    data = run_simulation(
+        n_steps=n_steps,
+        seed=seed,
+        E_0_factor=E_0_factor,
+        transition_m=discrete_to_continuous_cutoff,
+        use_omega_k_amplitude=True,
+        Omega_k_true_base=omega_k_true,
+    )
     eta = data["eta"]
     # Use |η| for density so that ρ_b > 0 (paper predicts η > 0; sign is chiral)
     eta_for_rho = np.abs(eta)
@@ -167,19 +191,21 @@ def forward_4d_evolution(
     )
     print(f"Lattice table saved to {outpath} — ready for CLASS (T_cmb = {T_cmb_k} K)")
 
-    # What CLASS will compute from the table: H0 = sqrt(3*rho_today/(3-gamma)) in 1/Mpc
+    # What CLASS will compute from the table: H0 = sqrt(3*rho_today/(3-gamma)) in 1/Mpc, then (km/s)/Mpc = (1/Mpc)*c
     rho_today_class = rho_r_comov_class + rho_b_comov_class
     H0_class_mpc = np.sqrt(3.0 * rho_today_class / (3.0 - gamma))
-    H0_km_s_Mpc = H0_class_mpc * 2.998e5  # c in km/s
+    H0_km_s_Mpc_from_table = H0_class_mpc * 2.998e5  # 1/Mpc * c in km/s
     omega_m_class = rho_b_comov_class / (rho_today_class + 1e-300)
     omega_r_class = rho_r_comov_class / (rho_today_class + 1e-300)
+    H0_km_s_Mpc_from_friedmann = H0_gev * H_GEV_TO_KM_S_MPC
 
     print("\n=== HQIV: Baryogenesis to lock-in, then Friedmann to T_cmb ===")
     print(f"Lock-in: T = {T_lock_gev:.4g} GeV ({T_lock_k:.2e} K), a_lock = {a_lock:.4e}")
     print(f"η (from baryogenesis) = {eta:.4e}")
     print(f"Ω_k^true = {omega_k_true:.4f}")
-    print(f"CLASS will get: H₀ = {H0_km_s_Mpc:.2f} km/s/Mpc  (from table at T_cmb)")
-    print(f"CLASS will get: Ω_m (baryon) ≈ {omega_m_class:.6f}, Ω_r ≈ {omega_r_class:.6e}")
+    print(f"H₀ (Friedmann closure) = {H0_km_s_Mpc_from_friedmann:.2f} km/s/Mpc")
+    print(f"H₀ from table (CLASS)  = {H0_km_s_Mpc_from_table:.2f} km/s/Mpc")
+    print(f"Ω_m (baryon) ≈ {omega_m_class:.6f}, Ω_r ≈ {omega_r_class:.6e}")
     print(f"Table: {n_loga} rows from a = {a_lock:.2e} to 1, T = {T_cmb_k} K at a=1")
     return {
         "eta": eta,

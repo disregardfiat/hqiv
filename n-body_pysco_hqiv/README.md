@@ -101,7 +101,7 @@ Without `BULLET_MEM_GB` / `BULLET_CPU_PCT`, the script still runs detached but p
 ./run_bullet_nohup.sh ./my_run/ my_run.log
 
 # Extra run_bullet.py args (after output dir and log)
-./run_bullet_nohup.sh ./my_run/ my_run.log --steps 300 --gamma 0.43
+./run_bullet_nohup.sh ./my_run/ my_run.log --steps 300 --gamma 0.40
 ```
 
 Manual detached run: `nohup python3 -u run_bullet.py ... >> run.log 2>&1 & disown -h $!`

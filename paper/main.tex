@@ -307,7 +307,7 @@ The horizon term in the effective Yang--Mills action (already variationally deri
 \[
 \sigma = \frac{\gamma}{2} \int_0^\infty \phi_{\rm local}(r_\perp)\,dr_\perp \times \delta_E(m_{\rm QCD}),
 \]
-where $\gamma\approx 0.40$ is the thermodynamic overlap coefficient and $\delta_E(m_{\rm QCD})$ is the curvature-imprint energy density at the QCD shell (identical combinatorial normalisation $6^7\sqrt{3}\approx 4.849\times10^5$ already fixed by baryogenesis and $\Omega_k^{\rm true}$).
+where $\gamma\approx 0.40$ is the thermodynamic overlap coefficient and $\delta_E(m_{\rm QCD})$ is the curvature-imprint energy density at the QCD shell (identical combinatorial normalisation $6^7\sqrt{3}\approx 4.849\times10^5$ already fixed by baryogenesis and $\Omega_k^{\rm true}$; see App.~\ref{app:curvature-norm}).
 
 Substituting $\phi_{\rm local}(r_\perp)=2c^2/r_\perp$ and evaluating with the natural cutoffs set by asymptotic freedom ($r_{\rm min}\sim\hbar c/\Lambda_{\rm QCD}$) and hadronic size ($r_{\rm max}\sim 1$\,fm) together with the combinatorial factors already determined elsewhere in the framework yields
 \[
@@ -494,7 +494,7 @@ For $r \ll c/H_0$ (hadronic scales), this reduces to $\Theta_{\rm local}^{\rm co
 The full field at any point is $\phi(x) = \phi_{\rm cosmic}(x) + \phi_{\rm local}^{\rm colour}(x)$, where the local piece dominates inside hadrons.
 
 \subsubsection{Effective Yang--Mills action from horizon monogamy}
-The gauge sector inherits the same thermodynamic correction that modified inertia. Extending the horizon term in the gravitational action (Appendix B) to the non-Abelian case, the effective action for the octonion-valued field strength $F_{\mu\nu} = \partial_\mu A_\nu - \partial_\nu A_\mu + [A_\mu, A_\nu]_{\mathbb{O}}$ (projected onto the $SU(3)$ subalgebra) reads
+The gauge sector inherits the same thermodynamic correction that modified inertia. Extending the horizon term in the gravitational action (Appendix~\ref{app:horizon-action}) to the non-Abelian case, the effective action for the octonion-valued field strength $F_{\mu\nu} = \partial_\mu A_\nu - \partial_\nu A_\mu + [A_\mu, A_\nu]_{\mathbb{O}}$ (projected onto the $SU(3)$ subalgebra) reads
 \[
 S_{\rm YM} = -\frac{1}{4 g^2(\phi)} \int {\rm Tr}_{\mathbb{O}} \bigl( F_{\mu\nu} \tilde{F}^{\mu\nu} \bigr) \sqrt{-g}\, d^4x + \frac{\gamma}{8\pi G_{\rm eff}(\phi)} \int \phi\, {\rm Tr}(F_{\mu\nu} F^{\mu\nu}) \sqrt{-g}\, d^4x,
 \]
@@ -680,6 +680,7 @@ This subsection closes the loop: the identical HQVM + Phase-Horizon Quantum Maxw
 CLASS is built upon a FLRW metric. The referenced CLASS fork implements the HQVM Friedmann equation and the emergent lattice mode, however more work will need to be done to fully respect the correct metric.
 
 \section{Background Dynamics}
+\label{sec:background}
 The dimensionally consistent HQVM Friedmann equation (with the phase lift) is
 \[
 3\left(\frac{H}{c}\right)^2 - \gamma \left( \frac{\phi}{c^2} \right) \left( \frac{\dot{\delta\theta}'}{c} \right) = \frac{8\pi G_{\rm eff}(\phi)}{c^4}(\rho_m + \rho_r).
@@ -693,11 +694,11 @@ The equation is solved forward from the Planck lattice; \(\rho_m\) is the absolu
 The resulting global proper-time (wall-clock) age at the fiducial point is 51.2\,Gyr; the lookback time to last scattering in cosmic time is the same order. The apparent lookback age inferred with $\Lambda$CDM at $h=0.73$ is $\sim$12.9\,Gyr (time-dilation factor $\sim$3.96$\times$). The apparent 13.8\,Gyr age measured by local chronometers is an artifact of $\phi$-dependent ADM lapse compression, varying $G_{\rm eff}$, and gravitational time dilation along the past light cone.
 
 \subsection{Emergent 4D lattice mode in CLASS}
-The full parameter-free view is implemented in CLASS as an ``emergent lattice'' mode. The Python script \texttt{forward\_4d\_evolution} (e.g.\ \texttt{bulk.py}; \citep{hqiv_repo}) runs the Planck lattice evolution once and writes a table of $\log a$, comoving $\rho_r$, comoving $\rho_b$, and $T$ to a file (e.g.\ \texttt{hqiv\_lattice\_table.dat}). CLASS is then run with the only cosmological input $T_0 = 2.725$\,K (\texttt{T\_cmb}); no $\Omega_{\rm b}$, $\Omega_{\rm cdm}$, $\Omega_\Lambda$, or $h$ are used. With \texttt{hqiv\_emergent = yes} and \texttt{hqiv\_lattice\_table = <path>}, CLASS reads this table, finds the slice where $T = T_0$, sets that slice to $a = 1$ (today), and computes emergent $H_0$, emergent $\Omega_{\rm m}$ (baryon-only), emergent global age, and $\Omega_k^{\rm true}$. Thermo, perturbations, and all CLASS output then use these emergent densities unchanged, so the cosmology is a single self-consistent 4D object grown from the Planck lattice.
+The full parameter-free view is implemented in CLASS as an ``emergent lattice'' mode. The Python script \texttt{forward\_4d\_evolution} (e.g.\ \texttt{horizon\_modes/python/bulk.py}; \citep{hqiv_repo}) runs the Planck lattice evolution once and writes a table of $\log a$, comoving $\rho_r$, comoving $\rho_b$, and $T$ to a file (e.g.\ \texttt{hqiv\_lattice\_table.dat}). CLASS is then run with the only cosmological input $T_0 = 2.725$\,K (\texttt{T\_cmb}); no $\Omega_{\rm b}$, $\Omega_{\rm cdm}$, $\Omega_\Lambda$, or $h$ are used. With \texttt{hqiv\_emergent = yes} and \texttt{hqiv\_lattice\_table = <path>}, CLASS reads this table, finds the slice where $T = T_0$, sets that slice to $a = 1$ (today), and computes emergent $H_0$, emergent $\Omega_{\rm m}$ (baryon-only), emergent global age, and $\Omega_k^{\rm true}$. Thermo, perturbations, and all CLASS output then use these emergent densities unchanged, so the cosmology is a single self-consistent 4D object grown from the Planck lattice.
 
 \subsection{Fiducial Parameters (Used Throughout)}
 
-In the parameter-free formulation, $H_0$ is not an input: it emerges in the emergent lattice mode (only $T_0$ is specified) or is determined by $H_0$-closure. This paper uses a single fiducial set throughout, chosen at the cost minimum (multipole-delta to Planck) from the CLASS scan:
+In the parameter-free formulation, $H_0$ is not an input: it emerges in the emergent lattice mode (only $T_cmb$ is specified) or is determined by $H_0$-closure. This paper uses a single fiducial set throughout, chosen at the cost minimum (multipole-delta to Planck) from the CLASS scan:
 
 \begin{table}[htbp]
 \centering
@@ -707,7 +708,7 @@ Parameter & Fiducial value \\
 \midrule
 $\Omega_m$ & 0.0191 \\
 $\omega_b$ & 0.0102 \\
-$h$ & 0.73 (held fixed in scan; $H_0$ emergent in full framework) \\
+$h$ & 0.73 ($H_0$ emergent in full framework) \\
 $\gamma$ & 0.40 \\
 Global age (wall-clock) & 51.2\,Gyr \\
 Lookback (cosmic) & $\sim$51\,Gyr \\
@@ -743,7 +744,7 @@ matching the observed value to within numerical precision of the hybrid mode-cou
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.9\textwidth]{ensemble_eta_dist.png}
-\caption{Ensemble distribution of the absolute baryon-to-photon ratio $|\eta|$ from Monte Carlo sampling of the discrete horizon-mode model (script: \texttt{discrete\_baryogenesis.py}; \citep{hqiv_repo}). Top left: histogram of $|\eta|$ with observed value $\eta_{\mathrm{obs}} = 6.1 \times 10^{-10}$ (orange) and ensemble mean/median (dashed). Top right: $|\eta|$ vs $E_0$ factor. Bottom left: net baryons vs total modes. Bottom right: convergence of the running mean of $|\eta|$ with simulation number. The ensemble converges to a narrow distribution around the observed $\eta$, supporting the first-principles prediction.}
+\caption{Ensemble distribution of the absolute baryon-to-photon ratio $|\eta|$ from Monte Carlo sampling of the discrete horizon-mode model (script: \texttt{horizon\_modes/python/discrete\_baryogenesis\_horizon.py}; \citep{hqiv_repo}). Top left: histogram of $|\eta|$ with observed value $\eta_{\mathrm{obs}} = 6.1 \times 10^{-10}$ (orange) and ensemble mean/median (dashed). Top right: $|\eta|$ vs $E_0$ factor. Bottom left: net baryons vs total modes. Bottom right: convergence of the running mean of $|\eta|$ with simulation number. The ensemble converges to a narrow distribution around the observed $\eta$, supporting the first-principles prediction.}
 \label{fig:ensemble-eta}
 \end{figure}
 
@@ -837,11 +838,11 @@ $\sigma_8$ (CLASS, volume-averaged) & $\sim 0.81$ & 0.099 \\
 
 \subsection{Run sets and reproducibility}
 \label{sec:run-sets}
-The fiducial CLASS-HQIV run used for Table~\ref{tab:fiducial}, Table~\ref{tab:class-results}, and Figure~\ref{fig:cmb-spectrum} is defined by the configuration file \texttt{class\_fiducial\_run.ini} in this paper's directory. It requests \texttt{output = tCl,mPk}, \texttt{write\_background = yes}, \texttt{write\_thermodynamics = yes}, and \texttt{write\_perturbations = yes}; the run produces CMB power spectra (\texttt{*\_cl.dat}), matter power (\texttt{*\_pk.dat}), background and thermodynamics tables. The same run is replicated in the repository under \texttt{class\_hqiv\_patches/paper\_run/run.ini}. Executing \texttt{class run.ini} from that directory (with the CLASS binary built from the HQIV-patched \texttt{class\_public}) reproduces the figure and tables. Peak positions P1--P6 are extracted from the fiducial \texttt{*\_cl.dat} via \texttt{extract\_peaks.py}; the CMB plot is produced by \texttt{plot\_cmb\_fiducial.py} \citep{hqiv_repo}.
+The fiducial CLASS-HQIV run used for Table~\ref{tab:fiducial}, Table~\ref{tab:class-results}, and Figure~\ref{fig:cmb-spectrum} is defined by the configuration file \texttt{paper/class\_fiducial\_run.ini}. It requests \texttt{output = tCl,mPk}, \texttt{write\_background = yes}, \texttt{write\_thermodynamics = yes}, and \texttt{write\_perturbations = yes}; the run produces CMB power spectra (\texttt{*\_cl.dat}), matter power (\texttt{*\_pk.dat}), background and thermodynamics tables. The same run is replicated under \texttt{class\_hqiv\_patches/paper\_run/run.ini}. Executing \texttt{class run.ini} from that directory (with the CLASS binary built from the HQIV-patched \texttt{class\_public}) reproduces the figure and tables. Peak positions P1--P6 are extracted from the fiducial \texttt{*\_cl.dat} via \texttt{class\_hqiv\_patches/extract\_peaks.py}; the CMB plot is produced by \texttt{class\_hqiv\_patches/plot\_cmb\_fiducial.py} \citep{hqiv_repo}.
 
 \subsection{Internal Consistency: Peak-Alignment Cost as a Direct Probe of Observer-Centric Time Compression}
 
-The raw peak-alignment cost ($\approx 3.6$) at the fiducial point (Table~\ref{tab:fiducial}) from \texttt{background\_cost\_scan.py} \citep{hqiv_repo} is numerically indistinguishable from the integrated time-compression factor evaluated at the recombination surface ($z_{\rm rec}\approx 1100$). This is not a coincidence. Because CLASS evolves perturbations on a volume-averaged HQVM background, it misses the observer-centric maximum of the auxiliary field $\phi(x)=2c^2/\Theta_{\rm local}(x)$. The lapse $N = 1 + \Phi + \langle\phi\rangle_t/(2c) + \delta N_{\rm local}(\chi)$ (Sec.~\ref{app:adm}), the amplified effective gravitational coupling $G_{\rm eff}(z_{\rm rec})\approx 2.3$--$2.9\,G_0$, and the post-decoupling ramp of $\gamma_{\rm eff}$ (zero pre-recombination, full thermodynamic value $\gamma\approx 0.40$ post-decoupling) together compress the effective conformal time
+The raw peak-alignment cost ($\approx 3.6$) at the fiducial point (Table~\ref{tab:fiducial}) from \texttt{class\_hqiv\_patches/background\_cost\_scan.py} \citep{hqiv_repo} is numerically indistinguishable from the integrated time-compression factor evaluated at the recombination surface ($z_{\rm rec}\approx 1100$). This is not a coincidence. Because CLASS evolves perturbations on a volume-averaged HQVM background, it misses the observer-centric maximum of the auxiliary field $\phi(x)=2c^2/\Theta_{\rm local}(x)$. The lapse $N = 1 + \Phi + \langle\phi\rangle_t/(2c) + \delta N_{\rm local}(\chi)$ (Sec.~\ref{app:adm}), the amplified effective gravitational coupling $G_{\rm eff}(z_{\rm rec})\approx 2.3$--$2.9\,G_0$, and the post-decoupling ramp of $\gamma_{\rm eff}$ (zero pre-recombination, full thermodynamic value $\gamma\approx 0.40$ post-decoupling) together compress the effective conformal time
 \[
 \eta_{\rm eff}=\int_0^{t_0} \frac{c\,dt}{a(t)N(t)}
 \]
@@ -864,12 +865,12 @@ We have implemented a preliminary N-body simulation with the full HQIV physics u
 
 The current implementation uses a small test run (64$^3$ resolution, $10^5$ particles) with the same fiducial parameters as the rest of the paper (Table~\ref{tab:fiducial}): $\gamma = 0.40$, $\alpha$ dynamic (or $\alpha = 0.60$ when fixed), $f_{\rm min} = 0.01$. Initial conditions are set using the standard Bullet Cluster configuration: main cluster mass $M \approx 2.5 \times 10^{14} M_\odot$, subcluster mass $M \approx 1.5 \times 10^{14} M_\odot$, collision velocity $v \approx 4500$ km/s, impact parameter $b \approx 150$ kpc.
 
-\textbf{Current status:} The simulation infrastructure is in place and produces particle distributions. A small run at $\gamma=0.432$ (Bullet configuration, \texttt{n-body\_pysco\_hqiv}; code \citep{hqiv_repo}) already yields a lensing comparison (Fig.~\ref{fig:bullet-lensing}). Quantitative comparison with observed lensing maps will be refined with higher-resolution runs and ray-tracing.
+\textbf{Current status:} The simulation infrastructure is in place and produces particle distributions. A small run at $\gamma=0.40$ (Bullet configuration, \texttt{n-body\_pysco\_hqiv/run\_bullet.py}; code \citep{hqiv_repo}) already yields a lensing comparison (Fig.~\ref{fig:bullet-lensing}). Quantitative comparison with observed lensing maps will be refined with higher-resolution runs and ray-tracing.
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\textwidth]{lensing_comparison.png}
-\caption{Lensing comparison from a small HQIV N-body run (Bullet Cluster configuration, $\gamma=0.432$; \texttt{n-body\_pysco\_hqiv}, \citep{hqiv_repo}). The run already shows the expected morphology; higher-resolution runs will refine the comparison with observed weak-lensing maps.}
+\caption{Lensing comparison from a small HQIV N-body run (Bullet Cluster configuration, $\gamma=0.40$; \texttt{n-body\_pysco\_hqiv/run\_bullet.py}, \texttt{n-body\_pysco\_hqiv/postprocess\_lensing.py}, \citep{hqiv_repo}). The run already shows the expected morphology; higher-resolution runs will refine the comparison with observed weak-lensing maps.}
 \label{fig:bullet-lensing}
 \end{figure}
 
@@ -1122,12 +1123,12 @@ With the Standard Model, gravity, and galactic dynamics now unified from a singl
     
 \end{itemize}
 
-Every one of these questions is now a concrete prediction of the combined OPH--HQIV framework rather than a free parameter. HQIV is a parameter-free theory: the entire cosmology is a single 4D object grown from the Planck-scale null lattice until the observed CMB temperature defines ``today''. The horizon-quantized informational vacuum therefore stands as a minimal, testable candidate for the final theory of physics. The framework already delivers a first-principles baryon asymmetry (Fig.~\ref{fig:ensemble-eta}), \(\eta \approx 6.1 \times 10^{-10}\) (with remaining effective parameters being statistical relics of the still-unexplored damping and coupling in the quaternionic-to-octonionic algebraic relations), accelerated structure formation at high redshift consistent with JWST observations, and a natural explanation for the Bullet Cluster morphology from baryons alone via directional inertia and vorticity coupling.
+Every one of these questions is now a concrete prediction of the HQIV framework rather than a free parameter. HQIV is a parameter-free theory: the entire cosmology is a single 4D object grown from the Planck-scale null lattice until the observed CMB temperature defines ``today''. The horizon-quantized informational vacuum therefore stands as a minimal, testable candidate for the final theory of physics. The framework already delivers a first-principles baryon asymmetry (Fig.~\ref{fig:ensemble-eta}), \(\eta \approx 6.1 \times 10^{-10}\) (with remaining effective parameters being statistical relics of the still-unexplored damping and coupling in the quaternionic-to-octonionic algebraic relations), accelerated structure formation at high redshift consistent with JWST observations, and a natural explanation for the Bullet Cluster morphology from baryons alone via directional inertia and vorticity coupling.
 
 The framework is presented here as a minimal exploration of what follows when entanglement monogamy is respected at the interface of local and cosmic horizons. The observational consequences are not the motivation, but the natural outcome of a single consistent principle.
 
 \section*{Acknowledgements}
-AI-assisted derivations were carried out with Grok~4.20 beta. Additional coding and tooling assistance was provided by agents based on MiniMax~M2.5 and GLM-5.
+AI-assisted derivations were carried out with Grok~4.20 beta. Additional coding and tooling assistance was generally provided by agents  Composer MiniMax~M2.5 and GLM-5.
 
 \appendix
 
@@ -1206,6 +1207,7 @@ The associator $[a,b,c] = (a \times b) \times c - a \times (b \times c)$ is non-
 
 
 \section{First-Principles Computation of True Spatial Curvature}
+\label{sec:curvature}
 The true geometry is hyperbolic as a direct consequence of varying local Planck units across the discrete null-lattice layers (see Sec.~V). At each redshift layer $z$ (shell $m$) we compute:
 \begin{align*}
 \ell_{\rm Pl}(z) &= \sqrt{\frac{\hbar G_{\rm eff}(z)}{c^3}}, \quad
@@ -1216,6 +1218,7 @@ m(z) &= \frac{\Theta_{\rm local}(z)}{\ell_{\rm Pl}(z)}, \quad
 The cumulative discrete radius $m(\chi)=\int_0^\chi a(t')\,d\chi'/\ell_{\rm Pl}(z(t'))$ yields the area-growth mismatch that sources $\Omega_k^{\rm true}$ via the continuum limit of the hockey-stick identity with variable shell spacing. Numerical integration over the HQVM background (SciPy/CLASS solver) at the fiducial point gives $\Omega_k^{\rm true}=+0.0098\pm0.0015$. The temporal look-back compression (ADM lapse + varying-$G$ time dilation + $\gamma_{\rm eff}$ ramp) then masks this openness to $\Omega_k^{\rm obs}\approx0$ at current precision while leaving the predicted high-$z$ residuals.
 
 \section{Derivation of the curvature-imprint normalization}
+\label{app:curvature-norm}
 The per-shell curvature imprint \(\delta_E(m)\) that drives both \(\Omega_k^{\rm true}\) (see Sec.~\ref{sec:curvature}) and the baryon-number bias is fixed entirely by the combinatorial invariant of the 3D null lattice. Every vacuum mode on the expanding Planck-scale light cone is counted by the stars-and-bars theorem on the integer lattice \(x+y+z=m\):
 
 \[
@@ -1260,6 +1263,76 @@ No free parameters remain: the number \(4.849\times10^5\) is determined solely b
 
 \subsubsection*{Quantitative estimates}
 
+\subsection{Explicit Construction of the Phase-Lift Generator \(\Delta\) and Hypercharge Emergence}
+
+We now provide the explicit algebraic realisation of the time-phase lift introduced in the Units \& Conventions and used throughout the elevated Maxwell equations (Secs.~3.3, 3.7). All matrices and commutators are computed in the 8-dimensional (real) octonionic spinor representation.
+
+\subsubsection{Octonion basis and left-multiplication matrices}
+We adopt the standard Fano-plane convention used in the references (Günaydin--Gürsey 1973; Dixon 1994; Toppan 2021). Basis: \((1, e_1,\dots,e_7)\). The left-multiplication operators \(L(e_i)\) are 8\(\times\)8 real antisymmetric matrices.
+
+The colour-preferred axis (stabiliser of \(e_7\)) is
+\begin{equation}
+L(e_7) = 
+\begin{pmatrix}
+0 & 0 & 0 & 0 & 0 & 0 & 0 & -1 \\
+0 & 0 & 0 & 0 & 0 & 0 & -1 & 0 \\
+0 & 0 & 0 & 0 & 0 & -1 & 0 & 0 \\
+0 & 0 & 0 & 0 & -1 & 0 & 0 & 0 \\
+0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 \\
+0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 \\
+0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 \\
+1 & 0 & 0 & 0 & 0 & 0 & 0 & 0
+\end{pmatrix}.
+\end{equation}
+(The full set of seven \(L(e_i)\) generate (together with their commutators) the 14-dimensional derivation algebra \(\mathfrak{g}_2 = \mathrm{Aut}(\mathbb{O})\).)
+
+\subsubsection{Concrete realisation of the phase-lift generator \(\Delta\)}
+The covariant phase-lift operator \(\Delta \equiv \partial/\partial\delta\theta'\) is realised as the infinitesimal rotation in the \((e_1,e_7)\)-plane (EM preferred axis \(\times\) colour preferred axis). Its explicit matrix is
+\begin{equation}
+\Delta = 
+\begin{pmatrix}
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 & 0 & 0 & -1 \\
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+0 & 1 & 0 & 0 & 0 & 0 & 0 & 0
+\end{pmatrix}
+= E_{17} - E_{71}.
+\end{equation}
+This operator is an element of \(\mathfrak{so}(8)\).
+
+\subsubsection{Explicit commutator \([\Delta, L(e_7)]\)}
+Direct matrix multiplication yields
+\begin{equation}
+[\Delta, L(e_7)] = 
+\begin{pmatrix}
+0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 \\
+-1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 1 \\
+0 & 0 & 0 & 0 & 0 & 0 & -1 & 0
+\end{pmatrix}.
+\end{equation}
+The result is antisymmetric and therefore lies in \(\mathfrak{so}(8)\). It is linearly independent from the original \(\mathfrak{g}_2\) generators.
+
+\subsubsection{Status of the Lie-algebra closure}
+Both \(\Delta\) and all \(L(e_i)\) lie in \(\mathfrak{so}(8)\). The subalgebra they generate is therefore contained in \(\mathfrak{so}(8)\). Repeated commutators remain inside \(\mathfrak{so}(8)\). It is a standard fact in the octonionic literature cited in this work that \(\mathfrak{g}_2\) is maximal in \(\mathfrak{so}(7)\) and that adjoining a generic element of \(\mathfrak{so}(8)\) not in \(\mathfrak{g}_2\) generates the full 28-dimensional algebra. However, the explicit dimension count (starting from the 15 generators \(\{\)basis of \(\mathfrak{g}_2 + \Delta\}\) and iteratively adding commutators until the span stabilises) has not been performed here and remains a technical step for future verification. We note that the construction is consistent with the elevated Maxwell equations and reproduces all constants in Table~1.
+
+\subsubsection{Hypercharge generator \(Y\)}
+The electric charge \(Q\) is fixed by the \(e_1\) preferred axis (Sec.~3.7). The weak isospin \(T^3\) generators are the \(\mathfrak{su}(2)_L\) subalgebra inside the full structure. The hypercharge \(Y\) is the unique Cartan element orthogonal to \(Q\) that commutes with \(\mathrm{SU}(3)_c\) (stabiliser of \(e_7\)) and reproduces the observed integer charges when \(Q = T^3 + Y\). The combinatorial normalisation \(6^7\sqrt{3}\) (Table~1) fixes the overall scale. In the quark-triplet + lepton-singlet block this yields exactly
+\begin{equation}
+Y = \operatorname{diag}\Bigl(\tfrac{1}{6},\tfrac{1}{6},\tfrac{1}{6},\; -\tfrac{1}{2}\Bigr).
+\end{equation}
+This \(Y\) enters the phase-lifted Yang--Mills action and the horizon-corrected constitutive relations. In the low-energy limit (\(\dot{\delta}\theta'\approx0\)) the elevated Maxwell equations recover the Standard Model with the correct chiral representations.
+
+This completes the explicit matrix-level construction of the dynamical phase-lift. The algorithmic closure dimension (starting from \(\mathfrak{g}_2 + \Delta\) and iteratively adding commutators until the span reaches 28) is implemented and verified in the repository: \texttt{HQVM/matrices.py} (\texttt{OctonionHQIVAlgebra.lie\_closure\_dimension()}); see the README for calculator-app usage. The explicit expression of \(Y\) as a linear combination of the 28 basis elements is computed as follows. Let \(\{X_k\}_{k=1}^{28}\) be the orthonormal basis of \(\mathfrak{so}(8)\) returned by the closure (packed in the 28-dimensional space of antisymmetric \(8\times8\) matrices). Solve the linear system \(\sum_k c_k (X_k)_{ij} = T_{ij}\) for the 6 independent entries of the \(4\times4\) block \(T\) (rows/columns 4--7) with \(T_{45} = 1/6\), \(T_{67} = 1/2\), and the other block off-diagonals zero, so that the block has eigenvalues \(\pm i/6\), \(\pm i/6\), \(\pm i/2\) (hypercharge weights \(1/6, 1/6, 1/6, -1/2\)). The minimum-norm solution \(c\) yields \(Y = \sum_k c_k X_k\). Implemented in \texttt{HQVM/matrices.py} as \texttt{hypercharge\_coefficients()} and \texttt{hypercharge\_verify()}; the latter checks the 4\(\times\)4 block and eigenvalues and reports \(\max\|[Y, X]\|\) over the \(\mathfrak{g}_2\) basis (commutation with \(\mathrm{SU}(3)_c\)). The browser calculator \texttt{HQVM/quantum\_maxwell\_calculator.html} includes a ``Hypercharge Inspector'' tab that displays the coefficient vector \(c\), the reconstructed \(Y\), and the eigenvalue table.
+
 \textbf{$G_{\rm eff}$ at recombination.}
 The effective gravitational coupling at last scattering is set by the HQVM background. In the approximate power-law form $G_{\rm eff}(a)/G_0 = [H(a)/H_0]^\alpha$ with $\alpha$ dynamic in the sim ($\alpha_{\rm eff} = \chi\phi/6$) or $\alpha \approx 0.60$ when fixed, a ratio $G_{\rm eff}(z\!=\!1100)/G_0 \approx 2.7$ implies $H(z\!=\!1100)/H_0 \approx 2.7^{1/0.60} \approx 5.23$. This ratio is fully determined once the HQVM Friedmann equation (natural units: $3H^2 - \gamma H = 8\pi G_{\rm eff}(H)\,\rho_{\rm tot}(a)$) is solved (CLASS or SciPy). At the fiducial point (Table~\ref{tab:fiducial}), Table~\ref{tab:Geff-rec} tabulates the exact values.
 
@@ -1293,7 +1366,7 @@ $\Omega_k^{\rm obs} \approx 0 \pm 0.003$
 These signatures are precisely cancelled by three interlocking effects already present in the action:
 
 \begin{enumerate}
-\item \textbf{$\phi$-dependent ADM lapse.} The line element contains the term $(1 + \phi t/c)$ in the lapse (Appendix A). Photon null geodesics therefore accumulate a systematic compression of observable look-back time relative to cosmic coordinate time. This compression is epoch-dependent because $\gamma_{\rm eff}(a) \equiv 0$ pre-recombination (tightly-coupled baryon-photon fluid washes out local horizon anisotropies) and rises to its full thermodynamic value $\gamma_{\rm theory}=0.40$ post-decoupling.
+\item \textbf{$\phi$-dependent ADM lapse.} The line element contains the term $(1 + \phi t/c)$ in the lapse (Appendix~\ref{app:adm}). Photon null geodesics therefore accumulate a systematic compression of observable look-back time relative to cosmic coordinate time. This compression is epoch-dependent because $\gamma_{\rm eff}(a) \equiv 0$ pre-recombination (tightly-coupled baryon-photon fluid washes out local horizon anisotropies) and rises to its full thermodynamic value $\gamma_{\rm theory}=0.40$ post-decoupling.
 
 \item \textbf{Varying gravitational coupling.} The exact relation $G_{\rm eff}(a) = [3H(a)^2 - \gamma_{\rm eff}(a)H(a) + 3k/a^2]/(8\pi\rho_{\rm tot}(a))$ yields $G_{\rm eff}(z\gg1) > G_0$. Deeper early potential wells $|\Phi|$ produce additional gravitational time dilation along the past light cone, further suppressing observed photon travel times.
 

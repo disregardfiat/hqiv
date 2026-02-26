@@ -91,5 +91,9 @@ Optional: `--fine` runs a second pass around the best point. Results are written
 | `test_hqiv_debug.ini` | Debug/verbose run |
 | `test_baryons_only.ini` | Baryon-only test |
 | `peak_alignment_scan.py` | Input-space search over γ, ω_b, h, α to match CMB peak positions to Planck |
+| `paper_run/run.ini` | Fiducial run config (mirror of `paper/class_fiducial_run.ini`); run from CLASS build dir to reproduce paper CMB/tables |
+| `extract_peaks.py` | Extract P1–P6 peak positions from fiducial `*_cl.dat` |
+| `plot_cmb_fiducial.py` | Produce CMB TT plot (paper figure) |
+| `background_cost_scan.py` | Peak-alignment cost at fiducial point |
 
 For more run options and parameter descriptions, see **Running the CLASS-HQIV code** in `ecosmog/README.md`.

@@ -1,8 +1,8 @@
 # Horizon-Quantized Informational Vacuum (HQIV)
 
-Parameter-minimal cosmology derived from **Quantised Inertia** (McCulloch 2007–2026): zero dark energy, zero dark matter, horizon-driven late-time acceleration and faster early structure formation. Repo contains the arXiv-ready paper, sandbox numerics, and CLASS/HiCLASS integration scaffolding.
+Parameter-free cosmology from entanglement monogamy on causal horizons: zero dark energy, zero dark matter, horizon-driven late-time acceleration and first-principles baryon asymmetry \(\eta = 6.1\times10^{-10}\), spatial curvature \(\Omega_k^{\rm true}\approx +0.0098\), and fiducial global age **51.2 Gyr** (apparent ~13.8 Gyr from observer-centric lapse). Repo contains the paper, CLASS-HQIV integration, horizon lattice (baryogenesis + background table), and N-body Bullet test.
 
-[Zenodo Preprint: Horizon-Quantized Informational Vacuum (HQIV): A Covariant Baryon-Only Cosmological Framework from Quantised Inertia](https://zenodo.org/records/18717656)
+[Zenodo: Horizon-Quantized Informational Vacuum (HQIV): A Grand Unified Theory of Physics](https://zenodo.org/records/18717656)
 
 ---
 
@@ -10,71 +10,106 @@ Parameter-minimal cosmology derived from **Quantised Inertia** (McCulloch 2007�
 
 ### Paper (LaTeX)
 
+From repo root:
+
 ```bash
 cd paper
-pdflatex main
+pdflatex -interaction=nonstopmode main.tex
 bibtex main
-pdflatex main
-pdflatex main
-# Or use Overleaf: upload paper/ (main.tex + refs.bib).
+pdflatex -interaction=nonstopmode main.tex
+pdflatex -interaction=nonstopmode main.tex
 ```
 
-### Sandbox (background integration)
+Output: `paper/main.pdf`. Or upload `paper/` (main.tex + refs.bib + figures) to Overleaf.
 
-Produces universe age, proper time at z=14, d_A(z=14), and `hqiv_Ha.txt` for CLASS.
+### CLASS with HQIV (CMB / fiducial run)
 
-**Recommended: fresh venv with scipy** (needed for stable ODE integration; numpy-only RK4 can be unstable):
-
-```bash
-python -m venv hqiv_env
-source hqiv_env/bin/activate   # or hqiv_env\Scripts\activate on Windows
-pip install numpy scipy matplotlib classy
-cd sandbox
-python hqiv_background.py
-```
-
-If you only have numpy, the script falls back to a built-in RK4; the run may then give off numbers until scipy is available. Paper targets: **17.2 Gyr** age, **940 Myr** at z=14, **d_A(z=14) ≈ 1.42 Gpc**.
-
-**CLASS from source (for custom background / HiCLASS-style modified gravity):**
-
-```bash
-git clone https://github.com/lesgourg/class_public.git
-cd class_public
-make -j4
-pip install -e .
-```
-
-(For the modified-gravity fork with μ/γ support, use the HiCLASS branch; see `class_integration/MODIFICATIONS.md`.)
-
-### CLASS with HQIV (Boltzmann / CMB)
-
-The full CLASS tree and the CLASS-HQIV fork are **not** tracked in this repo (they are git-ignored). To build and run CLASS with HQIV support:
+The full CLASS tree is **not** in this repo (git-ignored). To reproduce the paper CMB figure and tables:
 
 1. **Download CLASS**: `git clone https://github.com/lesgourg/class_public.git`
-2. **Apply HQIV patches**: Copy the files from `class_hqiv_patches/` into the CLASS `source/` and `include/` directories, and add `hqiv.o` to the Makefile `SOURCE` line. Full steps are in **`class_hqiv_patches/README.md`**.
-3. **Build and run**: `make class` then `./class test_hqiv.ini` (copy the `.ini` files from `class_hqiv_patches/`).
+2. **Apply HQIV patches**: See **`class_hqiv_patches/README.md`** — copy sources/headers from `class_hqiv_patches/` into CLASS, add `hqiv.o` to the Makefile, then `make class`.
+3. **Fiducial run**: Config `paper/class_fiducial_run.ini` (and mirror `class_hqiv_patches/paper_run/run.ini`). From the CLASS directory after building: `./class run.ini` (with `run.ini` copied from `class_hqiv_patches/paper_run/`).
+4. **Peaks and CMB plot**: Run `class_hqiv_patches/extract_peaks.py` on the fiducial `*_cl.dat`; CMB figure: `class_hqiv_patches/plot_cmb_fiducial.py`. See paper § Run sets and reproducibility.
 
-See **`ecosmog/README.md`** (section “Running the CLASS-HQIV code”) for parameter descriptions and run options.
+### Lattice table (baryogenesis → background for CLASS)
+
+Produces the HQIV background table (emergent \(\Omega_m\), \(H_0\), \(\Omega_k^{\rm true}\), age) from the discrete light-cone:
+
+```bash
+cd horizon_modes/python
+pip install numpy scipy   # optional: matplotlib for plots
+python bulk.py            # or: from bulk import forward_4d_evolution; forward_4d_evolution(...)
+```
+
+Output: e.g. `hqiv_lattice_table.dat`. CLASS reads this with `hqiv_emergent = yes` and `hqiv_lattice_table = <path>`.
+
+### Bullet Cluster N-body and lensing
+
+Small test run (64³ particles, 20 steps, \(\gamma=0.40\)):
+
+```bash
+cd n-body_pysco_hqiv
+pip install numpy scipy matplotlib   # + numba if available
+python run_bullet.py --resolution 64 --npart 262144 --steps 20 --gamma 0.4 --box 5 --output ./output_bullet_64_20_g04
+python postprocess_lensing.py --output ./output_bullet_64_20_g04 --box 5
+```
+
+Figure: `output_bullet_64_20_g04/lensing_comparison.png`. See **`n-body_pysco_hqiv/README.md`** for production runs and physics modules.
+
+### HQVM algebra calculator (so(8) closure)
+
+To verify full \(\mathfrak{so}(8)\) closure (28 dimensions) from \(\mathfrak{g}_2 + \Delta\) and confirm the hypercharge construction, use **`HQVM/matrices.py`** in a calculator or script:
+
+```python
+from HQVM.matrices import OctonionHQIVAlgebra
+alg = OctonionHQIVAlgebra(verbose=False)
+dim, history = alg.lie_closure_dimension()
+if dim == 28:
+    print("Full so(8) achieved — hypercharge construction valid")
+```
+
+Hypercharge verification (block entry error, eigenvalues of 4×4 block, and \([Y, \mathfrak{g}_2]\) check):
+
+```python
+alg = OctonionHQIVAlgebra(verbose=False)
+c, Y, _ = alg.hypercharge_coefficients()
+ver = alg.hypercharge_verify(Y)
+print("Block entry error:", ver["block_entry_error"])
+print("Eigenvalues imag:", ver["eigenvalues_i_block"])
+print("Max [Y, g₂_colour] norm:", ver["max_commutation_with_g2"])   # ~1e-14 or better
+```
+
+Run from repo root (so that `HQVM` is on the Python path), or execute `python HQVM/matrices.py` from repo root for a quick closure check. Requires `numpy`. See **`HQVM/matrices.py`** for the full implementation (left-multiplication matrices \(L(e_i)\), phase-lift generator \(\Delta\), and Lie closure).
+
+**Quantum Maxwell calculator (browser):** Open **`HQVM/quantum_maxwell_calculator.html`** in a browser for a self-contained app: phase-horizon Maxwell degrees of freedom (φ, ε(φ), μ(φ), δθ′), paper calculators (Higgs mass, curvature imprint δ_E(m), η, so(8) closure), interactive **Lie-closure visualiser** (iteration vs dimension 15→28, “Full so(8) achieved ✓” badge), **β-running engine** (sliders γ, T₀; α_EM, sin²θ_W, α_s down to M_Z; Table 1), Hypercharge Inspector, and multiple instances each plotting onto a shared graph.
 
 ---
 
-## Repo layout
+## Repo layout (paths relative to repo root)
 
-| Path | Contents |
-|------|----------|
-| `paper/` | LaTeX source (main.tex, refs.bib) — arXiv/Overleaf ready |
-| `sandbox/` | HQIV background ODE (scipy), H(a) table output |
-| `class_hqiv_patches/` | **HQIV-modified CLASS files only** — clone CLASS and apply these to build CLASS-HQIV |
-| `ecosmog/` | ECOSMOG implementation plan and **steps to run CLASS-HQIV** |
-| `class_integration/` | CLASS/HiCLASS params, H(a) export (legacy) |
+| Path | Description |
+|------|-------------|
+| **paper/** | LaTeX source: main.tex, refs.bib, class_fiducial_run.ini; figures (cmb_spectrum_fiducial.pdf, lensing_comparison.png, etc.) |
+| **class_hqiv_patches/** | HQIV-modified CLASS files only; paper_run/run.ini; extract_peaks.py, plot_cmb_fiducial.py, background_cost_scan.py |
+| **horizon_modes/python/** | Lattice baryogenesis and 4D table: bulk.py (forward_4d_evolution), discrete_baryogenesis_horizon.py |
+| **n-body_pysco_hqiv/** | Bullet N-body: run_bullet.py, postprocess_lensing.py; hqiv_modifications/ (phi_field, g_eff, bullet_ic, etc.) |
+| **HQVM/** | Octonion HQIV algebra: matrices.py (so(8) closure); quantum_maxwell_calculator.html (Phase-Horizon Maxwell + paper calculators, multi-instance graph) |
+| **sandbox/** | Standalone HQIV background ODE (e.g. hqiv_background.py) |
+| **ecosmog/** | ECOSMOG / CLASS-HQIV run notes |
 
 ---
 
 ## Key numbers (from paper)
 
-- **β ≈ 0.81**, visible **Ω_m = 0.048** (two effective parameters, to be eliminated).
-- Age today: **17.2 Gyr**; proper time at z=14: **940 Myr** (≈3.2× ΛCDM).
-- CMB: first peak ℓ ≈ 217; low-ℓ power suppressed ≈18%; χ²_SN+BAO better than untuned ΛCDM by Δχ² = −14.5 (2 fewer parameters).
-- Redshift quantization clusters at z ≈ 10.2, 11.8, 13.5, 14.9 (JWST-testable).
+- **\(\eta = 6.1\times10^{-10}\)** (baryon asymmetry), **\(\Omega_k^{\rm true}\approx +0.0098\)** (true curvature), **\(\Omega_m = 0.0191\)** (fiducial baryon-only), **\(\gamma = 0.40\)** (thermodynamic overlap).
+- **Global age**: 51.2 Gyr at fiducial cost minimum; apparent age ~13.8 Gyr from \(\phi\)-dependent lapse and time compression (~3.96×).
+- **CMB**: Fiducial run gives peaks P1–P6 (Table in paper); peak-alignment cost ≈ 3.6; axis-of-evil band \(\ell\lesssim 20\).
+- **Bullet**: 64³, 20 steps, \(\gamma=0.40\); lensing comparison in paper from `n-body_pysco_hqiv` run + postprocess_lensing.
 
+---
 
+## References
+
+- Paper: **paper/main.tex** (and appendices: ADM lapse, variational horizon action, curvature-imprint normalization).
+- CLASS build and run: **class_hqiv_patches/README.md**.
+- N-body and lensing: **n-body_pysco_hqiv/README.md**.

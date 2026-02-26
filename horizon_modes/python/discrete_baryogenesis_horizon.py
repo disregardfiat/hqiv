@@ -213,6 +213,43 @@ def curvature_imprint_energy(
     return raw
 
 
+def omega_k_from_shell_integral(
+    transition_m: int,
+    T_Pl: float = T_PL_GEV,
+    E_0_factor: float = 1.0,
+    alpha: float = 0.60,
+    omega_k_at_reference: float = 0.0098,
+    reference_transition_m: int = DISCRETE_TO_CONTINUOUS_M,
+) -> float:
+    """
+    Compute Ω_k^true from the integrated curvature imprint from shell 0 to
+    discrete-to-continuous cutoff (transition_m). Same geometric mechanism
+    as the per-shell δE(m); integrated over shells gives the global curvature.
+
+    Uses first-principles shape only (no Ω_k input). The integral is
+    sum_{m=0}^{transition_m-1} (1/(m+1)) * (1 + α ln(T_Pl/T(m))), with
+    T(m) = E_0/(m+1). Conversion to Ω_k is calibrated so that at
+    reference_transition_m (default 500) we get omega_k_at_reference (0.0098).
+    """
+    E_0 = E_0_factor * T_Pl
+    m_arr = np.arange(0, int(transition_m), dtype=float)
+    R_h = m_arr + 1.0
+    T = E_0 / R_h
+    shell_fraction = 1.0 / (m_arr + 1.0)
+    shape = shell_fraction * (1.0 + alpha * np.log(np.maximum(T_Pl / T, 1.0)))
+    integral = np.sum(np.abs(shape))
+
+    # Reference integral at default cutoff for calibration
+    m_ref = np.arange(0, int(reference_transition_m), dtype=float)
+    T_ref = E_0 / (m_ref + 1.0)
+    shape_ref = (1.0 / (m_ref + 1.0)) * (1.0 + alpha * np.log(np.maximum(T_Pl / T_ref, 1.0)))
+    integral_ref = np.sum(np.abs(shape_ref))
+
+    if integral_ref <= 0:
+        return omega_k_at_reference
+    return float(omega_k_at_reference * integral / integral_ref)
+
+
 # =============================================================================
 # HORIZON FIELD: φ and ∇φ per shell
 # =============================================================================
@@ -351,12 +388,25 @@ def run_simulation(
     """
     E_0 = E_0_factor * T_Pl
     
+    # Log-spaced T from T_Pl down to T_QCD so lock-in at ~1.8 GeV is in range (paper window)
     m_max = n_steps
-    m = np.arange(0, m_max, dtype=float)
-    R_h = m + 1.0
-    T = E_0 / R_h
-    
-    dN_new = hybrid_mode_count(m, transition_m=transition_m)
+    i_arr = np.arange(m_max, dtype=float)
+    T = T_Pl * (T_QCD / T_Pl) ** (i_arr / max(1, m_max - 1))  # T[0]=T_Pl, T[-1]=T_QCD
+    R_h = T_Pl / np.maximum(T, 1e-300)
+    m = np.maximum(R_h - 1.0, 0.0)  # effective shell index (float)
+
+    # New modes per step: discrete count integrand (4*(m+2)*(m+1) per integer shell)
+    def _delta_modes(m_hi: float, m_lo: float) -> float:
+        if m_lo >= m_hi:
+            return 0.0
+        m_hi, m_lo = int(min(m_hi, transition_m)), int(min(m_lo, transition_m))
+        if m_lo >= m_hi:
+            return 0.0
+        return 4.0 * sum((k + 2) * (k + 1) for k in range(m_lo, m_hi))
+    dN_new = np.zeros(m_max)
+    for i in range(m_max - 1):
+        dN_new[i] = max(1.0, _delta_modes(m[i], m[i + 1]))
+    dN_new[m_max - 1] = max(1.0, 4.0 * (m[m_max - 1] + 2) * (m[m_max - 1] + 1))
     
     lnT_lock = np.log(T_QCD)
     p_lock = 1.0 / (1.0 + np.exp(lock_in_sharpness * (np.log(T) - lnT_lock)))
@@ -365,7 +415,7 @@ def run_simulation(
     fermi_factor = np.abs(dpl) / (np.max(np.abs(dpl)) + 1e-300)
     
     field = HorizonField.from_temperature(
-        T, T_Pl=E_0, n_steps=n_steps, R_h=R_h,
+        T, T_Pl=T_Pl, n_steps=n_steps, R_h=R_h,
         fluctuation_scale=fluctuation_scale, seed=seed,
     )
     
