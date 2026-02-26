@@ -863,14 +863,14 @@ We have implemented a preliminary N-body simulation with the full HQIV physics u
     \item Varying gravitational coupling $G_{\rm eff}(a) = G_0 (H(a)/H_0)^\alpha$
 \end{itemize}
 
-The current implementation uses a small test run (64$^3$ resolution, $10^5$ particles) with the same fiducial parameters as the rest of the paper (Table~\ref{tab:fiducial}): $\gamma = 0.40$, $\alpha$ dynamic (or $\alpha = 0.60$ when fixed), $f_{\rm min} = 0.01$. Initial conditions are set using the standard Bullet Cluster configuration: main cluster mass $M \approx 2.5 \times 10^{14} M_\odot$, subcluster mass $M \approx 1.5 \times 10^{14} M_\odot$, collision velocity $v \approx 4500$ km/s, impact parameter $b \approx 150$ kpc.
+The current implementation uses a 64$^3$ run with 500 time steps (\texttt{output\_bullet\_64\_500\_g04}) and the same fiducial parameters as the rest of the paper (Table~\ref{tab:fiducial}): $\gamma = 0.40$, $\alpha$ dynamic (or $\alpha = 0.60$ when fixed), $f_{\rm min} = 0.01$. Initial conditions are set using the standard Bullet Cluster configuration: main cluster mass $M \approx 2.5 \times 10^{14} M_\odot$, subcluster mass $M \approx 1.5 \times 10^{14} M_\odot$, collision velocity $v \approx 4500$ km/s, impact parameter $b \approx 150$ kpc.
 
-\textbf{Current status:} The simulation infrastructure is in place and produces particle distributions. A small run at $\gamma=0.40$ (Bullet configuration, \texttt{n-body\_pysco\_hqiv/run\_bullet.py}; code \citep{hqiv_repo}) already yields a lensing comparison (Fig.~\ref{fig:bullet-lensing}). Quantitative comparison with observed lensing maps will be refined with higher-resolution runs and ray-tracing.
+\textbf{Current status:} The simulation infrastructure is in place and produces particle distributions. The 500-step run at $\gamma=0.40$ (Bullet configuration, \texttt{n-body\_pysco\_hqiv/run\_bullet.py}; code \citep{hqiv_repo}) yields the lensing comparison in Fig.~\ref{fig:bullet-lensing}. Quantitative comparison with observed lensing maps will be refined with higher-resolution runs and ray-tracing.
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\textwidth]{lensing_comparison.png}
-\caption{Lensing comparison from a small HQIV N-body run (Bullet Cluster configuration, $\gamma=0.40$; \texttt{n-body\_pysco\_hqiv/run\_bullet.py}, \texttt{n-body\_pysco\_hqiv/postprocess\_lensing.py}, \citep{hqiv_repo}). The run already shows the expected morphology; higher-resolution runs will refine the comparison with observed weak-lensing maps.}
+\caption{Lensing comparison from the HQIV N-body run \texttt{output\_bullet\_64\_500\_g04} (64$^3$, 500 steps, Bullet Cluster configuration, $\gamma=0.40$; \texttt{n-body\_pysco\_hqiv/run\_bullet.py}, \texttt{n-body\_pysco\_hqiv/postprocess\_lensing.py}, \citep{hqiv_repo}). The run shows the expected morphology; higher-resolution runs will refine the comparison with observed weak-lensing maps.}
 \label{fig:bullet-lensing}
 \end{figure}
 

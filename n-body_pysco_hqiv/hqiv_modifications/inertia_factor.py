@@ -2,25 +2,21 @@
 HQIV Inertia Factor Module
 ==========================
 
-Computes the thermodynamic inertia reduction factor f(a_loc, φ) from the action principle.
+Computes the inertia reduction factor f(a_loc, φ) from the paper action principle.
 
-Paper Reference: paper/main.tex, Section 4.2
-    f(a_loc, φ) = max( a_loc / (a_loc + cφ/6), f_min )
+Paper Reference: paper/main.tex, Modified Geodesic Eq., Sec. 4.2, Bullet list
+    f(a_loc, φ) = max( a_loc / (a_loc + φ/6), f_min )
 
 where:
-    - a_loc is the local acceleration magnitude
-    - φ is the horizon field
-    - cφ/6 gives the minimum acceleration scale
+    - a_loc is the local acceleration magnitude [m/s²]
+    - φ is the horizon field φ = 2c²/Θ_local [m/s²] (same units as acceleration)
+    - φ/6 is the minimum acceleration scale (1/6 from overlap integral)
     - f_min ≈ 0.01 is the thermodynamic floor
 
-The factor χ ≈ 0.172 from the full light-cone average (Brodie's overlap integral)
-relates the minimum acceleration to the horizon field: a_min = χ c φ
-
 Key Physics:
-------------
-- High acceleration (a_loc >> a_min): f → 1 (standard inertia)
-- Low acceleration (a_loc ~ a_min): f < 1 (reduced inertia)
-- The floor f_min prevents breakdown in deep MOND regime
+- High acceleration (a_loc >> φ/6): f → 1 (standard inertia)
+- Low acceleration (a_loc ~ φ/6): f < 1 (reduced inertia)
+- Geodesic: a_eff = -∇Φ/f (paper: m_i a = -m_g ∇Φ, m_i = m_g f)
 
 Author: HQIV Team
 """
@@ -82,37 +78,26 @@ def inertia_reduction_factor(alpha, phi, chi=_chi, f_min=_f_min, form=_inertia_f
         
     Notes
     -----
-    The thermodynamic form is derived from:
-        f(a, Θ) = a / (a + cH/6)
-    
-    where the factor 1/6 comes from the backward-hemisphere overlap integral:
-        ∫₀^{π/2} cos²θ sinθ dθ = 1/6
-    
-    With χ = 0.172 from the full light-cone average, the minimum acceleration is:
-        a_min = χ c φ
+    Paper (main.tex): f(a_loc, φ) = a_loc/(a_loc + φ/6) with φ = 2c²/Θ in [m/s²].
+    The factor 1/6 is from the backward-hemisphere overlap integral.
+    chi is retained for API compatibility (used elsewhere for α_eff = χφ/6).
     
     Examples
     --------
-    >>> # High acceleration regime (standard inertia)
-    >>> f = inertia_reduction_factor(1e-9, 1e-10)  # a >> a_min
-    >>> print(f)  # Should be close to 1
-    
-    >>> # Low acceleration regime (reduced inertia)
-    >>> f = inertia_reduction_factor(1e-12, 1e-10)  # a ~ a_min
-    >>> print(f)  # Should be < 1
+    >>> # High acceleration: a >> φ/6 → f ≈ 1
+    >>> f = inertia_reduction_factor(1e-9, 1e-10)
+    >>> # Low acceleration: a ~ φ/6 → f < 1
+    >>> f = inertia_reduction_factor(1e-12, 1e-10)
     """
     alpha = np.asarray(alpha)
     phi = np.asarray(phi)
     
     if form == 'thermo':
-        # Thermodynamic floor from Brodie's thermodynamics
-        # a_min = χ c φ (minimum acceleration from horizon information)
-        # The factor cφ/6 comes from the overlap integral
-        a_min = chi * c * phi
-        
-        # Brodie's linear form with thermodynamic floor
-        # f = α / (α + a_min/6) = α / (α + χ c φ / 6)
-        denominator = alpha + a_min / 6.0
+        # Paper: main.tex Eq. (Modified Geodesic), Sec. 4.2, Bullet item list
+        # f(a_loc, φ) = max( a_loc / (a_loc + φ/6), f_min )
+        # Both a_loc and φ are in acceleration units [m/s²]; φ = 2c²/Θ_local.
+        # The factor 1/6 is from the backward-hemisphere overlap integral.
+        denominator = alpha + phi / 6.0
         
         # Avoid division by zero
         denominator = np.maximum(denominator, 1e-100)
@@ -143,12 +128,9 @@ def inertia_reduction_factor(alpha, phi, chi=_chi, f_min=_f_min, form=_inertia_f
         return f
     
     elif form == 'brodie':
-        # Brodie's form without floor
-        f = alpha / (alpha + c * phi / 6.0)
-        
-        # Still apply floor for numerical stability
+        # Same as thermo (paper form): f = a/(a + φ/6), φ in [m/s²]
+        f = alpha / (alpha + phi / 6.0)
         f = np.maximum(f, f_min)
-        
         return f
     
     else:
@@ -446,21 +428,18 @@ try:
     def inertia_reduction_factor_numba(alpha, phi, chi, f_min):
         """
         Numba-optimized inertia factor computation.
-        
-        Uses the thermodynamic form for performance.
+        Paper: f = a/(a + φ/6), φ in [m/s²]. chi unused (kept for API).
         """
         n = len(alpha)
         f = np.empty(n, dtype=np.float64)
         
         for i in prange(n):
-            a_min = chi * c * phi[i]
-            denom = alpha[i] + a_min / 6.0
+            denom = alpha[i] + phi[i] / 6.0
             if denom > 0:
                 f[i] = alpha[i] / denom
             else:
                 f[i] = f_min
             
-            # Apply floor
             if f[i] < f_min:
                 f[i] = f_min
             if f[i] > 1.0:
@@ -523,12 +502,15 @@ def test_inertia_factor():
     phi = c * H0  # m/s²
     
     print(f"φ = cH0 = {phi:.2e} m/s²")
-    print(f"a_min = χ c φ = {0.172 * phi:.2e} m/s²")
+    print(f"Paper scale φ/6 = {phi/6:.2e} m/s²")
     
     # Compute inertia factor for different forms
     f_thermo = inertia_reduction_factor(alpha, phi, form='thermo')
     f_sqrt = inertia_reduction_factor(alpha, phi, form='sqrt')
     f_brodie = inertia_reduction_factor(alpha, phi, form='brodie')
+    
+    # Characteristic scale from paper: φ/6
+    a_scale = phi / 6.0
     
     # Create plot
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
@@ -539,9 +521,7 @@ def test_inertia_factor():
     ax.loglog(alpha, f_sqrt, 'r--', label='Square-root', linewidth=2)
     ax.loglog(alpha, f_brodie, 'g:', label='Brodie (no floor)', linewidth=2)
     
-    # Mark characteristic scales
-    a_min = 0.172 * phi
-    ax.axvline(a_min, color='k', linestyle=':', alpha=0.5, label=f'a_min = {a_min:.2e}')
+    ax.axvline(a_scale, color='k', linestyle=':', alpha=0.5, label=f'φ/6 = {a_scale:.2e}')
     ax.axhline(0.01, color='gray', linestyle='--', alpha=0.5, label='Floor f_min = 0.01')
     
     ax.set_xlabel('Local acceleration α [m/s²]')
@@ -556,7 +536,7 @@ def test_inertia_factor():
     ax.semilogx(alpha, f_thermo, 'b-', label='Thermodynamic', linewidth=2)
     ax.semilogx(alpha, f_sqrt, 'r--', label='Square-root', linewidth=2)
     
-    ax.axvline(a_min, color='k', linestyle=':', alpha=0.5)
+    ax.axvline(a_scale, color='k', linestyle=':', alpha=0.5)
     ax.axhline(0.5, color='gray', linestyle='--', alpha=0.3)
     
     ax.set_xlabel('Local acceleration α [m/s²]')
@@ -570,11 +550,11 @@ def test_inertia_factor():
     plt.close()
     print("Saved inertia_factor_test.png")
     
-    # Print summary
+    # Print summary (paper: f = a/(a + φ/6))
     print("\nInertia Factor Summary:")
-    print(f"  At a = a_min: f = {inertia_reduction_factor(a_min, phi):.3f}")
-    print(f"  At a = 10*a_min: f = {inertia_reduction_factor(10*a_min, phi):.3f}")
-    print(f"  At a = 0.1*a_min: f = {inertia_reduction_factor(0.1*a_min, phi):.3f}")
+    print(f"  At a = φ/6: f = {inertia_reduction_factor(a_scale, phi):.3f}")
+    print(f"  At a = 10*(φ/6): f = {inertia_reduction_factor(10*a_scale, phi):.3f}")
+    print(f"  At a = 0.1*(φ/6): f = {inertia_reduction_factor(0.1*a_scale, phi):.3f}")
     
     return f_thermo
 

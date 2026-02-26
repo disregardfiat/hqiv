@@ -20,10 +20,11 @@ G_μν + γ(φ/c²) g_μν = (8π G_eff(φ)/c⁴) T_μν
 3H² - γH = 8π G_eff(H) (ρ_m + ρ_r)
 ```
 
-### Inertia Factor (Section 4.2)
+### Inertia Factor (Section 4.2, Modified Geodesic)
 ```
-f(a_loc, φ) = max( a_loc / (a_loc + cφ/6), f_min )
+f(a_loc, φ) = max( a_loc / (a_loc + φ/6), f_min )
 ```
+(φ in [m/s²]; φ = 2c²/Θ_local. Factor 1/6 from overlap integral.)
 
 ### Vorticity Source (Section 6)
 ```

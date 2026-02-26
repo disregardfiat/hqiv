@@ -88,13 +88,11 @@ def test_inertia_factor():
     # Check monotonicity (higher acceleration → higher f)
     assert np.all(np.diff(f) >= 0), "f should increase with acceleration"
     
-    # The minimum acceleration scale is a_min = chi * c * phi / 6
-    # For phi = c * H0 ≈ 7e-10 m/s², a_min ≈ 0.172 * 3e8 * 7e-10 / 6 ≈ 0.006 m/s²
-    # So we need accelerations >> 0.006 m/s² to get f → 1
-    # And accelerations << 0.006 m/s² to get f → f_min
+    # Paper: f = a/(a + φ/6). For phi = c*H0 ≈ 7e-10 m/s², φ/6 ≈ 1.2e-10 m/s².
+    # High a >> φ/6 → f → 1; low a << φ/6 → f → floor.
     
-    f_high = inertia_reduction_factor(1.0, phi)  # 1 m/s² >> a_min
-    f_low = inertia_reduction_factor(1e-14, phi)  # << a_min
+    f_high = inertia_reduction_factor(1.0, phi)   # 1 m/s² >> φ/6
+    f_low = inertia_reduction_factor(1e-14, phi) # << φ/6
     
     assert f_high > 0.9, f"f should be ~1 for very high acceleration, got {f_high}"
     assert f_low < 0.1, f"f should be small for low acceleration, got {f_low}"
