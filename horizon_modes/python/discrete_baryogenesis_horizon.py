@@ -165,30 +165,52 @@ def hybrid_mode_count(m: np.ndarray, transition_m: int = DISCRETE_TO_CONTINUOUS_
 
 
 # =============================================================================
-# CURVATURE IMPRINT (replaces all epsilon — fully first-principles)
+# CURVATURE IMPRINT (discrete-to-continuous mismatch → δE(m))
 # =============================================================================
+# Paper: the same mechanism sources both Ω_k^true ≈ +0.0098 and the per-shell
+# δE(m) that weights baryon bias → η. Strictly first-principles: δE should be
+# computed from combinatorics only; then Ω_k^true would co-emerge from integrating
+# δE over shells. Current paper formula (main.tex) writes δE ∝ Ω_k^true × shape,
+# which introduces a mild circularity if Ω_k is then cited as "predicted".
+# We support both: (1) use_omega_k_amplitude=True  → paper formula, η and Ω_k
+# consistent by construction; (2) use_omega_k_amplitude=False → δE from shape
+# and combinatorial norm only (no Ω_k input); then Ω_k would need to be
+# predicted by a separate shell integral (not yet implemented).
+# =============================================================================
+
+CURVATURE_NORM_COMBINATORIAL = 6**7 * np.sqrt(3)  # ≈ 4.849e5, paper: stars-and-bars + Fano-plane
+
+
 def curvature_imprint_energy(
     m: np.ndarray,
     R_h: np.ndarray,
     T: np.ndarray,
     T_Pl: float = T_PL_GEV,
     alpha: float = 0.60,           # paper varying-G exponent
-    Omega_k_true_base: float = 0.0098,  # paper value from discrete null-lattice
+    Omega_k_true_base: Optional[float] = 0.0098,  # paper value; None = first-principles only
+    use_omega_k_amplitude: bool = True,
 ) -> np.ndarray:
     """
-    Energy imprinted on each horizon shell from discrete curvature mismatch.
-    
-    This is exactly the same mechanism that sources Ω_k^true = +0.0098.
-    ℓ_Pl(m) ∝ G_eff^{1/2} ∝ H^{α/2} ∝ T^α (RD).
-    Per-shell fractional mismatch → chiral bias (no free parameters).
-    Normalization 4.84e5 comes from:
-        hockey-stick identity (1/6) × octonion projection (1/8 × 1/7) × 4π averaging.
+    Per-shell curvature imprint δE(m) from discrete-to-continuous mismatch.
+
+    Shape (first-principles): shell_fraction × (1 + α ln(T_Pl/T)).
+    Normalization: 6^7√3 ≈ 4.849e5 (combinatorics + Fano-plane, paper).
+
+    If use_omega_k_amplitude=True (default): amplitude scaled by Omega_k_true_base
+    so that δE matches the paper formula δE = Ω_k^true × shape × (6^7√3). This
+    gives η and Ω_k consistent by construction but is not a fully independent
+    co-emergence (Ω_k is an input to the imprint).
+
+    If use_omega_k_amplitude=False: δE = shape × (6^7√3) only; no Ω_k input.
+    Then η is predicted from first principles; Ω_k^true would need to be
+    obtained from integrating δE over shells (separate routine).
     """
     shell_fraction = 1.0 / (m + 1.0)
-    # mild log from varying-G integrated effect
-    delta = Omega_k_true_base * shell_fraction * (1.0 + 0.6 * np.log(T_Pl / T))
-    normalization = 4.84e5   # pure combinatorics + Fano-plane averaging
-    return np.abs(delta) * normalization
+    shape = shell_fraction * (1.0 + alpha * np.log(np.maximum(T_Pl / T, 1.0)))
+    raw = np.abs(shape) * CURVATURE_NORM_COMBINATORIAL
+    if use_omega_k_amplitude and Omega_k_true_base is not None:
+        return Omega_k_true_base * raw
+    return raw
 
 
 # =============================================================================
@@ -317,8 +339,16 @@ def run_simulation(
     fluctuation_scale: float = 1e-6,
     E_0_factor: float = 1.0,
     seed: Optional[int] = 42,
+    use_omega_k_amplitude: bool = True,
+    Omega_k_true_base: Optional[float] = 0.0098,
 ) -> dict:
-    """Run discrete-to-continuous baryogenesis simulation."""
+    """Run discrete-to-continuous baryogenesis simulation.
+
+    use_omega_k_amplitude: if True (default), curvature imprint is scaled by
+        Omega_k_true_base so η and Ω_k are consistent (paper formula; mild
+        circularity). If False, δE uses combinatorics only (first-principles);
+        then Ω_k would need to co-emerge from a shell integral (not yet in code).
+    """
     E_0 = E_0_factor * T_Pl
     
     m_max = n_steps
@@ -346,8 +376,14 @@ def run_simulation(
     phi_ratio = field.phi_scalar
     horizon_term = GAMMA * phi_ratio
     
-    # NEW: curvature imprint (replaces all epsilon)
-    delta_E = curvature_imprint_energy(m, R_h, T)
+    # Curvature imprint: same mechanism as Ω_k^true (paper). Default uses
+    # Omega_k amplitude so η and Ω_k match; set use_omega_k_amplitude=False
+    # for first-principles δE only (Ω_k then to be predicted from shell integral).
+    delta_E = curvature_imprint_energy(
+        m, R_h, T,
+        use_omega_k_amplitude=use_omega_k_amplitude,
+        Omega_k_true_base=Omega_k_true_base,
+    )
     
     calc = AsymmetryCalculator()
     
