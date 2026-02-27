@@ -136,57 +136,6 @@ function buildTimeAndHorizonFromTable(aArr, H_over_H0Arr) {
   return { t_kyr, theta_mpc };
 }
 
-// RK4 fallback: paper A_eff = A_std + β H², dH/d(ln a) = (A_eff - H²)/H
-function runHQIVBackgroundRK4(aMin, aMax, nPts) {
-  const G0 = 6.6743e-11;
-  const Omega_m = 0.048;
-  const Omega_r = 9e-5;
-  const H0 = H0_SI;
-  const beta = BETA;
-  const Theta0 = 2 * C_SI / H0;
-
-  function G_ratio(a, H) {
-    const Theta = 2 * C_SI / (H + 1e-100);
-    return Math.pow(Theta0 / Theta, 0.6);
-  }
-  function rhs(ln_a, H) {
-    const a = Math.exp(ln_a);
-    const H_val = Math.max(H, 1e-4 * H0);
-    const rho_m = (3 * H0 * H0 * Omega_m / (8 * Math.PI * G0)) * (1 / (a * a * a));
-    const rho_r = (3 * H0 * H0 * Omega_r / (8 * Math.PI * G0)) * (1 / (a * a * a * a));
-    const G_rat = G_ratio(a, H_val);
-    const A_std = -(4 * Math.PI * G_rat * G0 / 3) * (rho_m + 2 * rho_r);
-    const A_eff = A_std + beta * H_val * H_val;
-    return (A_eff - H_val * H_val) / H_val;
-  }
-  function rk4Step(ln_a, H, dln_a) {
-    const k1 = rhs(ln_a, H);
-    const k2 = rhs(ln_a + 0.5 * dln_a, H + 0.5 * dln_a * k1);
-    const k3 = rhs(ln_a + 0.5 * dln_a, H + 0.5 * dln_a * k2);
-    const k4 = rhs(ln_a + dln_a, H + dln_a * k3);
-    return H + (dln_a / 6) * (k1 + 2 * k2 + 2 * k3 + k4);
-  }
-
-  const ln_a_min = Math.log(aMin);
-  const ln_a_max = Math.log(aMax);
-  const H2_init = (8 * Math.PI * G0 / 3) * (
-    (3 * H0 * H0 * Omega_r / (8 * Math.PI * G0)) / (aMin * aMin * aMin * aMin) +
-    (3 * H0 * H0 * Omega_m / (8 * Math.PI * G0)) / (aMin * aMin * aMin)
-  );
-  let H = Math.sqrt(Math.max(H2_init, 1e-100));
-
-  const aArr = [];
-  const HArr = [];
-  const step = (ln_a_max - ln_a_min) / (nPts - 1);
-  for (let i = 0; i < nPts; i++) {
-    const ln_a = ln_a_min + i * step;
-    aArr.push(Math.exp(ln_a));
-    HArr.push(H / H0);
-    if (i < nPts - 1) H = Math.max(rk4Step(ln_a, H, step), 1e-30);
-  }
-  return { aArr, HArr };
-}
-
 function initHQIVBackground() {
   const nPts = 2500;
   const aMin = 1e-7;
@@ -204,7 +153,7 @@ function initHQIVBackground() {
     console.log('HQIV table: ' + HQIV_a.length + ' rows; t_rec (from table) = ' + (t_rec_kyr != null ? t_rec_kyr.toFixed(1) + ' Kyr' : 'N/A'));
   }
 
-  // Prefer hqiv_Ha.txt from the main HQIV bulk/lattice pipeline.
+  // Require hqiv_Ha.txt from the main HQIV bulk/lattice pipeline.
   const urls = ['hqiv_Ha.txt'];
   let done = false;
   urls.forEach(url => {
@@ -221,9 +170,7 @@ function initHQIVBackground() {
 
   setTimeout(() => {
     if (HQIV_a.length > 0) return;
-    done = true;
-    const { aArr, HArr } = runHQIVBackgroundRK4(aMin, aMax, nPts);
-    useTable(aArr, HArr);
+    console.error('HQIV: hqiv_Ha.txt not found or empty; please generate it via horizon_modes/python/bulk.py and copy to this directory.');
   }, 500);
 }
 
