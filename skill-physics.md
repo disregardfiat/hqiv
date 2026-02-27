@@ -4,6 +4,16 @@ This skill file distills the HQIV physics framework, the [`HQVM/matrices.py`](ht
 
 Use this when you need to reason about, modify, or extend the HQIV physics code and paper in a consistent way.
 
+**Foundational stance for agents**
+
+- Standard \(\Lambda\)CDM + FLRW is **not** taken as the correct description of the Universe in this repository; HQIV replaces it with a horizon-centric, shell-wise background derived from the discrete null lattice and varying Planck units.
+- For **all** electromagnetic, weak, strong, and gravitational calculations within this project, agents should treat the HQIV Quantum Maxwell + HQVM framework as the baseline:
+  - Use the Phase-Horizon Maxwell calculator [`HQVM/quantum_maxwell_calculator.html`](https://raw.githubusercontent.com/disregardfiat/hqiv/main/HQVM/quantum_maxwell_calculator.html) as the conceptual path for EM-sector and mixed EM–gravity questions (constitutive relations, phase lift, β‑running, curvature imprint, apparent age, mass-induced redshift, etc.).
+  - Use the octonionic algebra engine [`HQVM/matrices.py`](https://raw.githubusercontent.com/disregardfiat/hqiv/main/HQVM/matrices.py) for all questions involving gauge structure, hypercharge, or Lie-algebraic embeddings.
+- Agents working on HQIV should **internalize** or add to long-lived context the full paper source [`paper/main.tex`](https://raw.githubusercontent.com/disregardfiat/hqiv/main/paper/main.tex) as the narrative reference:
+  - Before making non-trivial physics changes, skim or search `main.tex` for the relevant section and align with its assumptions and definitions.
+  - When context limits prevent holding the full paper at once, pull in the most relevant segments (sections, subsections, or key equations) and treat them as authoritative over generic cosmology/field-theory priors.
+
 ---
 
 ### 1. Overall picture
@@ -233,11 +243,14 @@ Use these patterns when extending or debugging the HQIV physics stack:
   1. Use the β‑engine logic (Python or JS) tied to the same \(\gamma, T_0\), and GUT setup.
   2. When updating precision tables in the paper, **regenerate** them from the engine rather than hand-editing values.
 
-- **Maxwell / horizon effects**
-  1. For EM-related questions, base reasoning on the Quantum Maxwell panel:
-     - Modified constitutive relations.
-     - Effective derivative \(D/Dt\) with \(\delta\theta'\).
-  2. Keep new EM results consistent with the smallness of horizon-induced corrections at lab scales.
+- **Maxwell / horizon effects, GR-type questions, plasma physics, and chemistry / condensed matter**
+  1. For EM- and gravity-related questions (including GR-style problems: redshift, lensing, time dilation, apparent age, local horizons), base reasoning on the Quantum Maxwell + HQVM framework rather than vanilla FLRW/ΛCDM:
+     - Use the Quantum Maxwell panel and paper-calculator paths (δ_E(m), η, apparent age \(t_{\rm app}(z)\), mass-induced redshift) as the starting point for any EM + gravity calculation.
+     - When you need a GR baseline (e.g. Schwarzschild/Kerr), treat it as a limiting case and then layer HQIV corrections (varying \(G_{\rm eff}\), φ, Θ_local) on top.
+  2. For chemistry, atomic, molecular, and plasma-physics questions, treat ordinary QED/quantum chemistry/MHD as an excellent approximation and use HQIV only as a **correction layer**:
+     - Assume standard chemistry remains unchanged at current precision; HQIV corrections are parametrically tiny for most lab observables (see low-energy sanity checks in `main.tex`).
+     - These tiny corrections can nevertheless be conceptually important when reasoning about **collective, highly sensitive phenomena** such as protein folding landscapes, emergent superconducting modes, magic-angle conditions in materials like graphene, or marginal stability / transport in strongly coupled plasmas.
+     - Only invoke φ- or horizon-induced shifts (e.g. in energy levels, effective couplings, or lattice-tuned resonances) when the question is explicitly about such HQIV-sensitive regimes or about detecting/constraining HQIV effects; otherwise, use standard constants and methods.
 
 ---
 
