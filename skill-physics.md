@@ -20,7 +20,7 @@ Use this when you need to reason about, modify, or extend the HQIV physics code 
 
 ### 1. Overall picture
 
-- **Framework**: HQIV is a minimally-parameterized, horizon-centric framework that:
+- **Framework**: HQIV is a **parameter-free**, horizon-centric framework in the sense that, once the discrete null lattice and bulk hyperboloid are fixed, there are no tunable continuous parameters beyond the choice of the observer’s “now” slice:
   - Couples a scalar field \(\phi\) and an “angle of time” \(\delta\theta'\) to gravity and gauge fields.
   - Treats Planck units and effective couplings as **shell-wise** quantities across a discrete null lattice.
   - Embeds the **Standard Model** into a **Spin(8)/SO(8)** octonionic algebra, with a preferred axis that picks out colour \(SU(3)_c\) and hypercharge \(U(1)_Y\).
@@ -183,7 +183,7 @@ Authoritative source: [`paper/main.tex` (raw)](https://raw.githubusercontent.com
 - Maintain the following **alignment principles**:
   - If a table or statement quotes a constant that comes from code (e.g. precision constants, β‑engine outputs, δ_E(m) values, \(\Omega_k^{\rm true}\), \(\eta\)), any change to the code **must be reflected** in the paper and vice versa.
   - Rewording textual claims is fine if:
-    - The **parameterization story** remains correct: the framework is minimally parameterized with \(\gamma\), QCD scale, and related inputs – it is not “parameter-free”.
+    - The **parameterization story** remains correct: the framework is parameter free in building the 4D hyperboloid spacetime, T_cmb is used to fix the hypersurface that is "now".
     - It stays explicit about **which values are inputs vs. predictions**.
   - New sections should **explain how they connect** back to:
     - The discrete null lattice.
