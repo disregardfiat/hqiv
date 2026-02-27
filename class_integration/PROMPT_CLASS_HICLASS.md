@@ -1,69 +1,110 @@
-# Prompt for full CLASS / HiCLASS sandbox
+# Prompt for full CLASS / HiCLASS HQIV setup
 
-Copy-paste the block below into your full Python/CLASS environment (HiCLASS branch recommended: [github.com/lesgourg/class_public](https://github.com/lesgourg/class_public) + HiCLASS fork for modified gravity). It implements the exact HQIV background + perturbations.
+This note summarizes how to run CLASS / HiCLASS **aligned with the paper**, using the single authoritative HQIV background pipeline.
+
+HiCLASS branch recommended: [github.com/lesgourg/class_public](https://github.com/lesgourg/class_public) + HiCLASS fork for modified gravity.
 
 ---
 
-```python
-# HQIV Cosmology for CLASS / HiCLASS
-# Run after installing CLASS with modified gravity support
+### 1. Generate the HQIV background and lattice (bulk.py)
 
-import numpy as np
-from classy import Class
+From the HQIV repo root:
 
-# HQIV parameters (locked from our sandbox)
-beta = 0.81          # horizon strength (a_min = beta * c * H)
-omega_b = 0.0224     # visible baryons only
-omega_cdm = 0.0      # ZERO cold dark matter
-h = 0.70
-Omega_m_vis = 0.048
-
-# Background override: custom Hubble function
-# H(a) = H0 * sqrt( Omega_r a^{-4} + Omega_m_vis * a^{-3} * (1 + delta_QI) + Omega_Lambda_QI(a) )
-# where delta_QI and Omega_Lambda_QI come from our A_eff = A_std + beta * H
-
-class HQIV_Class(Class):
-    def __init__(self):
-        super().__init__()
-        self.set({
-            'output': 'tCl pCl lCl mPk',
-            'l_max_scalars': 3000,
-            'lensing': 'yes',
-            'P_k_max_1/Mpc': 10,
-            'omega_b': omega_b,
-            'omega_cdm': 0.0,
-            'H0': h*100,
-            'Omega_k': 0.0,
-            'A_s': 2.1e-9,
-            'n_s': 0.96,
-            'tau_reio': 0.054,
-            # HiCLASS modified gravity flags
-            'mg_flag': 1,                    # activate modified gravity
-            'mu0': 1.0,                      # placeholder; we override below
-            'gamma0': 1.0,
-            # Custom background via external module or table (see below)
-        })
-
-# Feed our numerical H(a) table (generate from our scipy code first)
-# Example: save H(a) array from sandbox as hqiv_Ha.txt (columns: a, H/H0)
-# Then in CLASS: use 'background' custom or modify background.c
-
-# Step-by-step run instructions:
-# 1. Run our HQIV background integrator → save np.savetxt('hqiv_Ha.txt', np.c_[a_arr, H_arr])
-# 2. In CLASS source (background.c or use external_Pk), interpolate H(a) from table
-# 3. Add to perturbation module: delta_m'' = ... + QI_boost_term (from our growth ODE)
-# 4. Compile & run:
-# cosmo = HQIV_Class()
-# cosmo.set({'background_table': 'hqiv_Ha.txt'})  # or custom flag
-# cosmo.compute()
-# cls = cosmo.lensed_cl(3000)
-# Plot TT, compare low-ell suppression, acoustic peaks
+```bash
+python horizon_modes/python/bulk.py
 ```
 
+This produces the HQIV lattice / background table (see the top-level `README.md` and `class_hqiv_patches/README.md` for the exact filename, e.g. `hqiv_lattice_table.dat`).
+
+From that table, extract a two-column Hubble table
+
+```text
+a   H(a)/H0
+```
+
+and save it alongside your CLASS run as:
+
+```text
+hqiv_Ha.txt
+```
+
+This table is the **only** source for H(a) in HQIV–CLASS runs.
+
 ---
 
-**Exact modifications in CLASS source (HiCLASS branch):**
+### 2. Configure CLASS / HiCLASS to use the HQIV H(a) table
 
-- **background.c:** Replace standard Friedmann with table interpolation of our solved H(a) from the quadratic A_eff solver.
-- **perturbations.c:** Add to the δ' equation the QI inertia reduction factor `1/(1 − beta * c * H / |A|)`.
-- **Horizon cutoff:** Add exponential damping `exp(−k * Θ_local / (2π))` to longest modes (k < 2π/Θ).
+In your CLASS tree (HiCLASS branch), follow `class_integration/MODIFICATIONS.md`:
+
+- In `background.c` (or the equivalent background module):
+  - Add support for a `background_table` option, e.g.:
+    - When `background_table = "hqiv_Ha.txt"` is set in the `.ini`, read that file once at startup, interpolate H(a) from it, and derive conformal time etc. from the interpolated H(a).
+  - Replace the Friedmann-based H(a) evaluation by interpolation from `hqiv_Ha.txt` whenever HQIV is active.
+
+- In your `.ini` file for CLASS / HiCLASS, set parameters consistent with the paper:
+
+```ini
+omega_b = 0.0224        # visible baryons only
+omega_cdm = 0.0         # zero cold dark matter
+Omega_k = 0.0           # apparent flatness (true curvature carried by HQIV background)
+background_table = hqiv_Ha.txt
+mg_flag = 1             # modified gravity on (HiCLASS)
+```
+
+You may also set other vanilla parameters (`A_s`, `n_s`, `tau_reio`, etc.) as in your preferred fiducial, but do **not** introduce extra free HQIV parameters inside CLASS itself.
+
+---
+
+### 3. Perturbations and horizon terms (HiCLASS)
+
+Once the background is coming from the HQIV table:
+
+- In `perturbations.c` (or the module that evolves δ_m):
+  - Add the HQIV inertia-reduction factor to the matter growth equation, schematically:
+    - Factor \(1 / (1 - \beta\,c\,H/|A|)\), with \(\beta\) fixed by the HQIV bulk (and not tuned inside CLASS).
+
+- For the **horizon cutoff** on long modes:
+  - Apply an exponential damping for the longest modes:
+
+    ```text
+    exp(-k * Θ_local / (2π))  for  k < 2π / Θ
+    ```
+
+  - Implement this either in the transfer function or in the CMB source (line-of-sight integration) so that low-ℓ CMB power is suppressed at the level described in the paper.
+
+Make sure these modifications:
+
+- Use the **same** H(a) and Θ(a) implied by the HQIV background table.
+- Do not introduce any *additional* tuning parameters beyond those fixed by `bulk.py` and the paper.
+
+---
+
+### 4. Running from Python (optional)
+
+If you want to drive CLASS / HiCLASS from Python (e.g. with `classy`):
+
+- Install CLASS / HiCLASS with your modifications.
+- In Python, instantiate `Class` with:
+
+```python
+from classy import Class
+
+params = {
+    'output': 'tCl pCl lCl mPk',
+    'l_max_scalars': 3000,
+    'lensing': 'yes',
+    'P_k_max_1/Mpc': 10,
+    'omega_b': 0.0224,
+    'omega_cdm': 0.0,
+    'background_table': 'hqiv_Ha.txt',
+    # plus your standard primordial / reionisation parameters
+    # and HiCLASS modified-gravity flags (e.g. mg_flag = 1)
+}
+
+cosmo = Class()
+cosmo.set(params)
+cosmo.compute()
+cls = cosmo.lensed_cl(3000)
+```
+
+The key point is that **H(a) and all HQIV-specific structure must come from `hqiv_Ha.txt` generated by `bulk.py`**, not from ad-hoc background solvers or extra CLASS parameters.

@@ -1,9 +1,0 @@
---- a/fortran/results.f90
-+++ b/fortran/results.f90
-@@ -1,5 +1,6 @@
- ! Modules used by cmbmain and other routines.
- !
-+ ! HQIV covariant extension — Steven Ettinger + Mr 4.20 (GetTheta, GetInertiaFactor)
- ! Code for Anisotropies in the Microwave Background
- ! by Antony Lewis (http://cosmologist.info) and Anthony Challinor
- ! See readme.html for documentation.
