@@ -16,7 +16,7 @@ Implementation of Horizon-Quantized Informational Vacuum (McCulloch Quantised In
 
 | File | Role |
 |------|------|
-| **sandbox/generate_hqiv_background.py** | Integrate with **A_eff = A_std + beta*H(t)²**, beta=1.02. Output hqiv_Ha.txt (a, H_over_H0). Enforce H(a=1)=H₀. Expect age ~17–20 Gyr. |
+| **horizon_modes/python/bulk.py** | Main HQIV background + lattice generator used in the paper; from its output you can extract H(a) and write `hqiv_Ha.txt` (a, H_over_H0) for CAMB. (Legacy: `sandbox/generate_hqiv_background.py` produced an earlier toy-background `hqiv_Ha.txt`.) |
 
 ---
 

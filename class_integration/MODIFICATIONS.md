@@ -2,14 +2,22 @@
 
 Use CLASS with modified gravity support (e.g. HiCLASS branch: [lesgourg/class_public](https://github.com/lesgourg/class_public) + HiCLASS fork).
 
+**Authoritative HQIV→CLASS interface (paper-aligned)**
+
+- All cosmological inputs to CLASS (background H(a), curvature, effective G(a), and fiducial parameters) must ultimately come from a **single upstream source**: the HQIV bulk/lattice generator `horizon_modes/python/bulk.py`.
+- The only permitted way to change the CLASS background for HQIV is to **replace Friedmann integration by table interpolation of H(a)** built from the bulk output; do **not** introduce extra free CLASS parameters to “tune” HQIV.
+- Any perturbation or low-ℓ modifications (Sections 2–3 below) must use the **same bulk-derived background** and remain consistent with the equations and choices in `paper/main.tex`. Treat them as implementation details of the HQIV framework, not as extra knobs.
+
 ## 1. Background: custom H(a)
 
 **File:** `background.c` (or equivalent in your CLASS tree)
 
-- **Replace** the standard Friedmann integration with **table interpolation** of our solved H(a) from the quadratic A_eff solver.
-- Our sandbox writes `hqiv_Ha.txt` with columns: `a`, `H_over_H0`.
+- **Replace** the standard Friedmann integration with **table interpolation** of the HQIV H(a) from the main bulk/lattice pipeline.
+- Generate the table by running the horizon-modes code (from the HQIV repo root):
+  - `python horizon_modes/python/bulk.py`  
+    which writes a background / lattice table (see the top-level `README.md` and `class_hqiv_patches/README.md` for exact filenames and formats used in the paper).
 - In CLASS:
-  - Either add an input option `background_table = "hqiv_Ha.txt"` and, when set, in the background module compute H(a) by interpolating this table (and derive conformal time, etc., from it).
+  - Either add an input option `background_table = "hqiv_Ha.txt"` (or whatever name you give the extracted H(a) table) and, when set, in the background module compute H(a) by interpolating this table (and derive conformal time, etc., from it).
   - Or hardcode a wrapper that reads the table once and uses it in place of the standard H(a) from Friedmann.
 
 ## 2. Perturbations: QI growth term
@@ -28,19 +36,12 @@ Use CLASS with modified gravity support (e.g. HiCLASS branch: [lesgourg/class_pu
 
 ## 4. Parameter summary for CLASS
 
-| Parameter   | HQIV value | Note                    |
-|------------|------------|-------------------------|
-| `omega_b`  | 0.0224     | Visible baryons only    |
-| `omega_cdm`| 0.0        | Zero dark matter        |
-| `H0`       | 70         | h = 0.70                |
-| `mg_flag`  | 1          | Modified gravity on     |
-| `beta`     | 0.81       | Horizon strength (custom) |
+| Parameter   | HQIV value | Note                                     |
+|------------|------------|------------------------------------------|
+| `omega_b`  | 0.0224     | Visible baryons only                     |
+| `omega_cdm`| 0.0        | Zero dark matter                         |
+| `H0`       | 70         | h = 0.70 (example; see paper fiducial)   |
+| `mg_flag`  | 1          | Modified gravity on                      |
+| `beta`     | —          | Deprecated here; use bulk/CLASS pipeline |
 
-Generate the background table by running from the repo root:
-
-```bash
-python sandbox/hqiv_background.py
-# -> writes sandbox/hqiv_Ha.txt; copy to class_integration/ or point CLASS to it
-```
-
-Then point CLASS’s custom background to `hqiv_Ha.txt` (or the path you use).
+For production work aligned with the paper, **do not** use the legacy `sandbox/hqiv_background.py` ODE. Instead, always take H(a) and related background quantities from the `horizon_modes/python/bulk.py` → lattice-table → CLASS pipeline.

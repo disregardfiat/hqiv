@@ -69,10 +69,13 @@ double H_of_a_HQIV(double a) {
 }
 ```
 
-**Generate table**:
+**Generate table (legacy sandbox route; prefer bulk.py for paper-aligned work)**:
 ```bash
 python ../sandbox/hqiv_background.py
 # outputs hqiv_Ha.txt: columns a, H/H0
+# For production / paper-aligned HQIV runs, instead generate H(a) from:
+#   python ../../horizon_modes/python/bulk.py
+# and extract H(a) from the resulting lattice/background table.
 ```
 
 ### Phase 2: Modified Poisson Solver (2-4 weeks)

@@ -40,7 +40,7 @@ def get_hqiv_params():
 def run_with_class_background_table(hqiv_Ha_path="hqiv_Ha.txt"):
     """
     Step-by-step run instructions:
-    1. Run HQIV sandbox: python sandbox/hqiv_background.py
+    1. Run HQIV sandbox: python horizon_modes/python/bulk.py
        -> produces hqiv_Ha.txt (columns: a, H_over_H0)
     2. In CLASS source (background.c or use external table), interpolate H(a) from this table.
     3. Add to perturbation module: delta_m'' = ... + QI_boost_term (from our growth ODE).
