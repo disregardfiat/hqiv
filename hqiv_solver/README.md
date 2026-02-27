@@ -1,25 +1,41 @@
 # HQIV Perturbation Solver
 
-A pure-Python (NumPy + SciPy) Fourier-space integrator for the Horizon-Quantized Informational Vacuum (HQIV) framework. This solver evolves the exact scalar and vector perturbation equations from deep radiation era (a ≈ 10⁻⁹) through recombination to today.
+A pure-Python (NumPy + SciPy) Fourier-space integrator for an **earlier perturbative draft** of the Horizon-Quantized Informational Vacuum (HQIV) framework. This module evolves scalar and vector perturbation equations from deep radiation era (a ≈ 10⁻⁹) through recombination to today.
+
+> **Status and scope (important)**
+>
+> - This solver is **not** the authoritative implementation used for the current paper. The paper’s fiducial background, CMB spectrum, and precision constants come from the `bulk.py → lattice table → CLASS` pipeline described in the top-level `README.md` and `class_hqiv_patches/README.md`.
+> - The background here (`H² = H₀²[Ω_m a⁻³ + Ω_r a⁻⁴ + Ω_h a⁻ⁿ]` with tunable \(\beta, \Omega_h, n_h\)) corresponds to a **simplified HQIV-inspired FLRW ansatz**, not the full HQVM + discrete null-lattice treatment in `paper/main.tex`.
+> - Numerical values quoted below (e.g. age ≈ 17 Gyr, specific parameter choices) are **exploratory** and may not match the final fiducial point in the paper (which has a global age ≈ 51.2 Gyr, horizon-driven lapse, and emergent matter fraction).
+> - The “ΛCDM” mode is provided only as a **comparison baseline** inside this code. For work aligned with the paper, treat standard ΛCDM/FLRW as a reference model to contrast with HQIV, not as the correct cosmology.
 
 ## Paper Reference
 
-**"Horizon-Quantized Informational Vacuum (HQIV): A Covariant Baryon-Only Cosmological Framework from Quantised Inertia"**
+Current paper:  
+**“A Unified Framework from Causal Horizon Monogamy and Discrete Null-Lattice Combinatorics”**
 
-This solver implements the key equations from the paper:
+This solver implements a subset of the equations developed in earlier HQIV drafts and can still be useful for:
+
+- Rapid, Python-only experimentation with HQIV-like perturbations.
+- Sanity checks against ΛCDM-style perturbation evolution.
+- Prototyping ideas before porting them into the full HQVM + CLASS pipeline.
+
+For production results and paper figures, prefer the `bulk.py` + CLASS route; treat this module as a **sandbox** rather than a source of official numbers.
+
+### Equations covered here
 - **Background dynamics** (Section 5, Eqs. 13-15)
 - **Scalar perturbations** (Section 7, Eqs. 9-11)
 - **Vector perturbations** (Section 7, Eq. 12)
 - **Observables** (Section 8)
 
-## Features
+## Features (exploratory)
 
-- ✅ Background cosmology with HQIV horizon term
+- ✅ Background cosmology with a toy HQIV-inspired horizon term
 - ✅ Scalar perturbations with modified inertia
 - ✅ Vector (vorticity) perturbations with horizon coupling
 - ✅ CMB angular power spectrum C_ℓ^TT up to ℓ = 500
 - ✅ Growth factor and σ₈ computation
-- ✅ Toggle between HQIV and standard ΛCDM
+- ✅ Ability to switch between the toy HQIV background and a ΛCDM-like limit for comparison
 
 ## Installation
 
@@ -62,15 +78,17 @@ solver.plot_results()
 solver.summary()
 ```
 
-## Key Predictions
+## Example outputs (sandbox-only)
 
-| Observable | HQIV Prediction | ΛCDM | Notes |
-|------------|-----------------|------|-------|
-| Universe age | ~17 Gyr | 13.8 Gyr | Addresses JWST timing |
-| H₀ | 73.2 km/s/Mpc | 67.4 km/s/Mpc | Matches SH0ES |
-| Growth factor | ~0.36× ΛCDM | 1.0 | Falsifiable prediction |
-| Vorticity | Amplified (β > -2) | Decays as a⁻² | Unique signature |
-| CMB peak | Shifted | ℓ ~ 220-280 | Tests acoustic physics |
+The table below illustrates the kind of differences this toy solver can produce between its HQIV-like background and a ΛCDM-like limit. **Do not** treat these numbers as the paper’s definitive predictions; always defer to the CLASS-based pipeline for published values.
+
+| Observable | Example HQIV-solver value | ΛCDM-like limit | Notes |
+|------------|--------------------------|-----------------|-------|
+| Universe age | ~17 Gyr | 13.8 Gyr | From the simplified H(a) ansatz here; paper’s HQVM background gives a larger true age (~51.2 Gyr) with lapse compression. |
+| H₀ | 73.2 km/s/Mpc | 67.4 km/s/Mpc | Chosen to explore SH0ES-like values; not the only allowed HQIV configuration. |
+| Growth factor | ~0.36× ΛCDM | 1.0 | Illustrative suppression; precise growth is set by the full HQVM + CLASS run. |
+| Vorticity | Amplified (β > -2) | Decays as a⁻² | Demonstrates horizon-coupled vorticity; detailed predictions are in the main HQIV framework. |
+| CMB peak | Shifted | ℓ ~ 220–280 | Qualitative test of acoustic physics; final peak structure comes from CLASS with HQIV patches. |
 
 ## Module Structure
 
