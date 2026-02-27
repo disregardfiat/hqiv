@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.2.21)  26 FEB 2026 21:41
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.2.21)  27 FEB 2026 11:30
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -585,7 +585,7 @@ Underfull \hbox (badness 1917) in paragraph at lines 919--919
  []
 
 [32] [33]
-<ensemble_eta_dist.png, id=557, 1027.84pt x 858.20625pt>
+<ensemble_eta_dist.png, id=561, 1027.84pt x 858.20625pt>
 File: ensemble_eta_dist.png Graphic file (type png)
 <use ensemble_eta_dist.png>
 Package pdftex.def Info: ensemble_eta_dist.png  used on input line 959.
@@ -596,7 +596,7 @@ Underfull \hbox (badness 1769) in paragraph at lines 988--988
  []
 
 [36]
-<cmb_spectrum_fiducial.pdf, id=588, 496.80443pt x 276.4616pt>
+<cmb_spectrum_fiducial.pdf, id=592, 496.80443pt x 276.4616pt>
 File: cmb_spectrum_fiducial.pdf Graphic file (type pdf)
 <use cmb_spectrum_fiducial.pdf>
 Package pdftex.def Info: cmb_spectrum_fiducial.pdf  used on input line 1047.
@@ -618,7 +618,7 @@ Underfull \hbox (badness 1308) in paragraph at lines 1083--1084
 me steps
  []
 
-<lensing_comparison.png, id=697, 867.24pt x 867.24pt>
+<lensing_comparison.png, id=701, 867.24pt x 867.24pt>
 File: lensing_comparison.png Graphic file (type png)
 <use lensing_comparison.png>
 Package pdftex.def Info: lensing_comparison.png  used on input line 1089.
@@ -648,7 +648,7 @@ Underfull \hbox (badness 1997) in paragraph at lines 1090--1090
  []
 
 [40] [41 <./lensing_comparison.png>]
-<tensions.jpg, id=717, 2007.5pt x 659.46375pt>
+<tensions.jpg, id=721, 2007.5pt x 659.46375pt>
 File: tensions.jpg Graphic file (type jpg)
 <use tensions.jpg>
 Package pdftex.def Info: tensions.jpg  used on input line 1117.
@@ -836,19 +836,23 @@ Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 (hyperref)                removing `math shift' on input line 1786.
 
-[69] (./main.bbl [70]) [71] (./main.aux)
+[69] [70] (./main.bbl [71]) [72] (./main.aux)
  ***********
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-01-22>
  ***********
+
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
 Package rerunfilecheck Info: File `main.out' has not changed.
-(rerunfilecheck)             Checksum: CDEE190F91D0D0DA953EB82795EDB85E;21204.
+(rerunfilecheck)             Checksum: CAD7D752C39CA1D2F9F01A1650C397BC;21677.
  ) 
 Here is how much of TeX's memory you used:
- 11829 strings out of 476106
- 177429 string characters out of 5793933
+ 11835 strings out of 476106
+ 177497 string characters out of 5793933
  1941975 words of memory out of 5000000
- 33457 multiletter control sequences out of 15000+600000
+ 33459 multiletter control sequences out of 15000+600000
  576283 words of font info for 107 fonts, out of 8000000 for 9000
  59 hyphenation exceptions out of 8191
  79i,25n,93p,1942b,596s stack positions out of 10000i,1000n,20000p,200000b,200000s
@@ -877,10 +881,10 @@ fonts/cm/cmtt12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/
 euler/eufm10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/sym
 bols/msam10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symb
 ols/msbm10.pfb>
-Output written on main.pdf (71 pages, 3720123 bytes).
+Output written on main.pdf (72 pages, 3724030 bytes).
 PDF statistics:
- 1068 PDF objects out of 1200 (max. 8388607)
- 858 compressed objects within 9 object streams
- 223 named destinations out of 1000 (max. 500000)
- 549 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 1078 PDF objects out of 1200 (max. 8388607)
+ 867 compressed objects within 9 object streams
+ 227 named destinations out of 1000 (max. 500000)
+ 557 words of extra memory for PDF output out of 10000 (max. 10000000)
 
