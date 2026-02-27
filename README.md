@@ -83,6 +83,8 @@ Run from repo root (so that `HQVM` is on the Python path), or execute `python HQ
 
 **Quantum Maxwell calculator (browser):** Open **`HQVM/quantum_maxwell_calculator.html`** in a browser for a self-contained app: phase-horizon Maxwell degrees of freedom (φ, ε(φ), μ(φ), δθ′), paper calculators (Higgs mass, curvature imprint δ_E(m), η, so(8) closure), interactive **Lie-closure visualiser** (iteration vs dimension 15→28, “Full so(8) achieved ✓” badge), **β-running engine** (sliders γ, T₀; α_EM, sin²θ_W, α_s down to M_Z; Table 1), Hypercharge Inspector, and multiple instances each plotting onto a shared graph.
 
+**AI skill for HQIV physics:** The file **`skill-physics.md`** (at repo root) is a self-contained instruction set for AI agents. It summarizes the physics framework, links to the raw sources ([`HQVM/matrices.py`](https://raw.githubusercontent.com/disregardfiat/hqiv/main/HQVM/matrices.py), [`HQVM/quantum_maxwell_calculator.html`](https://raw.githubusercontent.com/disregardfiat/hqiv/main/HQVM/quantum_maxwell_calculator.html), [`paper/main.tex`](https://raw.githubusercontent.com/disregardfiat/hqiv/main/paper/main.tex)), and defines invariants and workflows that tools/agents should follow when modifying code or text.
+
 ---
 
 ## Repo layout (paths relative to repo root)

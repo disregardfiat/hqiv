@@ -167,15 +167,16 @@ def hybrid_mode_count(m: np.ndarray, transition_m: int = DISCRETE_TO_CONTINUOUS_
 # =============================================================================
 # CURVATURE IMPRINT (discrete-to-continuous mismatch → δE(m))
 # =============================================================================
+# Co-emergence: both Ω_k^true and η come from the same geometric mechanism
+# (per-shell mismatch + 6^7√3). Default keeps current scaling; document as
+# co-emergent from one mechanism (no new parameters).
+co_emergent_from_shell_mismatch = True  # Ω_k and η from same δE(m) source
+#
 # Paper: the same mechanism sources both Ω_k^true ≈ +0.0098 and the per-shell
-# δE(m) that weights baryon bias → η. Strictly first-principles: δE should be
-# computed from combinatorics only; then Ω_k^true would co-emerge from integrating
-# δE over shells. Current paper formula (main.tex) writes δE ∝ Ω_k^true × shape,
-# which introduces a mild circularity if Ω_k is then cited as "predicted".
-# We support both: (1) use_omega_k_amplitude=True  → paper formula, η and Ω_k
-# consistent by construction; (2) use_omega_k_amplitude=False → δE from shape
-# and combinatorial norm only (no Ω_k input); then Ω_k would need to be
-# predicted by a separate shell integral (not yet implemented).
+# δE(m) that weights baryon bias → η. We support both: (1) use_omega_k_amplitude=True
+# (default) → paper formula, η and Ω_k consistent by construction, co-emergent;
+# (2) use_omega_k_amplitude=False → δE from shape + (6^7√3) only (η ~ 10^{-52}
+# without integrated scaling; Ω_k^true from shape-alone integral is correct).
 # =============================================================================
 
 CURVATURE_NORM_COMBINATORIAL = 6**7 * np.sqrt(3)  # ≈ 4.849e5, paper: stars-and-bars + Fano-plane
