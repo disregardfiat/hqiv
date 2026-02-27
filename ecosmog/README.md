@@ -69,13 +69,11 @@ double H_of_a_HQIV(double a) {
 }
 ```
 
-**Generate table (legacy sandbox route; prefer bulk.py for paper-aligned work)**:
+**Generate table (paper-aligned route)**:
 ```bash
-python ../sandbox/hqiv_background.py
-# outputs hqiv_Ha.txt: columns a, H/H0
-# For production / paper-aligned HQIV runs, instead generate H(a) from:
-#   python ../../horizon_modes/python/bulk.py
-# and extract H(a) from the resulting lattice/background table.
+cd ../../
+python horizon_modes/python/bulk.py
+# From the resulting lattice/background table, extract H(a) into ecosmog/hqiv_Ha.txt (a, H/H0)
 ```
 
 ### Phase 2: Modified Poisson Solver (2-4 weeks)
@@ -198,7 +196,7 @@ void update_vorticity(double a, double dt) {
 
 **Procedure**:
 ```python
-# Implemented in sandbox/hqiv_background.py
+# Implemented against the HQIV bulk/lattice background (see horizon_modes/python/bulk.py)
 t_z = proper_time_at_z(a_arr, H_arr, z_target)
 ```
 
@@ -325,9 +323,8 @@ cd ECOSMOG
 cp ../ecosmog/src/*.c src/
 cp ../ecosmog/params/hqiv_params.ini .
 
-# Generate H(a) table
-python ../sandbox/hqiv_background.py
-mv hqiv_Ha.txt .
+# Generate H(a) table (from HQIV bulk/lattice output; see horizon_modes/python/bulk.py)
+cp ../hqiv_Ha.txt .
 
 # Build
 make clean && make

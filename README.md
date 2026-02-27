@@ -96,7 +96,6 @@ Run from repo root (so that `HQVM` is on the Python path), or execute `python HQ
 | **horizon_modes/python/** | Lattice baryogenesis and 4D table: bulk.py (forward_4d_evolution), discrete_baryogenesis_horizon.py |
 | **n-body_pysco_hqiv/** | Bullet N-body: run_bullet.py, postprocess_lensing.py; hqiv_modifications/ (phi_field, g_eff, bullet_ic, etc.) |
 | **HQVM/** | Octonion HQIV algebra: matrices.py (so(8) closure); quantum_maxwell_calculator.html (Phase-Horizon Maxwell + paper calculators, multi-instance graph) |
-| **sandbox/** | Standalone HQIV background ODE (e.g. hqiv_background.py) |
 | **ecosmog/** | ECOSMOG / CLASS-HQIV run notes |
 
 ---

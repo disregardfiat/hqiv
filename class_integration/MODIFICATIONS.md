@@ -44,4 +44,4 @@ Use CLASS with modified gravity support (e.g. HiCLASS branch: [lesgourg/class_pu
 | `mg_flag`  | 1          | Modified gravity on                      |
 | `beta`     | —          | Deprecated here; use bulk/CLASS pipeline |
 
-For production work aligned with the paper, **do not** use the legacy `sandbox/hqiv_background.py` ODE. Instead, always take H(a) and related background quantities from the `horizon_modes/python/bulk.py` → lattice-table → CLASS pipeline.
+For production work aligned with the paper, always take H(a) and related background quantities from the `horizon_modes/python/bulk.py` → lattice-table → CLASS pipeline.

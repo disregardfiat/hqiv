@@ -16,7 +16,7 @@ Implementation of Horizon-Quantized Informational Vacuum (McCulloch Quantised In
 
 | File | Role |
 |------|------|
-| **horizon_modes/python/bulk.py** | Main HQIV background + lattice generator used in the paper; from its output you can extract H(a) and write `hqiv_Ha.txt` (a, H_over_H0) for CAMB. (Legacy: `sandbox/generate_hqiv_background.py` produced an earlier toy-background `hqiv_Ha.txt`.) |
+| **horizon_modes/python/bulk.py** | Main HQIV background + lattice generator used in the paper; from its output you can extract H(a) and write `hqiv_Ha.txt` (a, H_over_H0) for CAMB. |
 
 ---
 

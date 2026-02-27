@@ -204,8 +204,8 @@ function initHQIVBackground() {
     console.log('HQIV table: ' + HQIV_a.length + ' rows; t_rec (from table) = ' + (t_rec_kyr != null ? t_rec_kyr.toFixed(1) + ' Kyr' : 'N/A'));
   }
 
-  // Prefer hqiv_Ha.txt from the main HQIV bulk/lattice pipeline; fall back to legacy sandbox path if present.
-  const urls = ['hqiv_Ha.txt', 'sandbox/hqiv_Ha.txt'];
+  // Prefer hqiv_Ha.txt from the main HQIV bulk/lattice pipeline.
+  const urls = ['hqiv_Ha.txt'];
   let done = false;
   urls.forEach(url => {
     if (done) return;
