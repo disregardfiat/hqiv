@@ -270,7 +270,7 @@ When agents edit or extend the HQIV physics stack:
     - Input (e.g. \(\gamma\), QCD scale, \(T_0\)),
     - Derived (e.g. curvature, η, precision constants),
     - Or phenomenological re-scaling (e.g. a multiplicative factor on δ_E).
-  - Avoid overstating claims (no “parameter-free” if there are inputs).
+  - There are no free parameters, only the "now" slice the dynamic equations work in.
 
 This file is the **single reference** for how agents should interact with the HQIV physics components. Keep it in sync with code and paper when making structural physics changes.
 
