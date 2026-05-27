@@ -12,3 +12,7 @@
 	path = hqiv-class
 	url = https://github.com/HQIV/hqiv-class.git
 	branch = main
+[submodule "n-body"]
+	path = n-body
+	url = https://github.com/HQIV/n-body.git
+	branch = main
