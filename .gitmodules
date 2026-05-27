@@ -1,3 +1,14 @@
 [submodule "n-body_pysco_hqiv/pysco"]
 	path = n-body_pysco_hqiv/pysco
 	url = https://github.com/mianbreton/pysco.git
+[submodule "class_public"]
+	path = class_public
+	url = https://github.com/lesgourg/class_public.git
+[submodule "hi_class_public"]
+	path = hi_class_public
+	url = https://github.com/miguelzuma/hi_class_public.git
+	branch = hi_class
+[submodule "hqiv-class"]
+	path = hqiv-class
+	url = https://github.com/HQIV/hqiv-class.git
+	branch = main
